@@ -1,10 +1,16 @@
 export interface Team {
     name: string;
+    logo: string;
+    id: number;
 }
 
 export interface Fixture {
     id: number;
     date: string;
+    status: {
+        long: string;
+        short: string;
+    };
 }
 
 export interface Goals {
@@ -16,8 +22,4 @@ export interface Match {
     fixture: Fixture;
     teams: { home: Team; away: Team };
     goals: Goals;
-    statistics?: Array<{
-        team: Team;
-        statistics: Array<{ type: string; value: string | number | null }>;
-    }>;
 }

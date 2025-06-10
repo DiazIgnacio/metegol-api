@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { FootballApiServer } from "@/lib/footballApi";
 
 const API_LIMIT = 1; // Limitar a 8 equipos
-const SEASON = 2023; //new Date().getFullYear();
+const SEASON = 2025; //new Date().getFullYear();
 
 export async function GET() {
     const apiKey = process.env.FOOTBALL_API_KEY;
