@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { FootballApiServer } from "@/lib/footballApi";
+import { Match } from "@/types/match";
 
-const API_LIMIT = 1; // Limitar a 8 equipos
-const SEASON = 2025; //new Date().getFullYear();
+const API_LIMIT = 1;
+const SEASON = 2025;
 
 export async function GET() {
     const apiKey = process.env.FOOTBALL_API_KEY;
@@ -11,16 +12,23 @@ export async function GET() {
     }
     const api = new FootballApiServer(apiKey);
     try {
-        const teamsData = await api.getArgentinianTeams(SEASON);
-        const teams = teamsData.response || [];
+        const teams = await api.getTeams(SEASON);
         const limitedTeams = teams.slice(0, API_LIMIT);
-        const matchesPromises = limitedTeams.map((team: { team: { id: number } }) =>
-            api.getArgentinianTeamMatches(team.team.id, SEASON)
-        );
-        const matchesResults = await Promise.all(matchesPromises);
-        console.log("Matches results:", matchesResults);
-        const allMatches = matchesResults.flatMap((result: { response?: unknown[] }) => result.response || []);
-        return NextResponse.json({ matches: allMatches });
+        const matchesResults = await Promise.all(limitedTeams.map(team => api.getTeamMatches(team.id, SEASON)));
+        const matchesWithoutStats = matchesResults.filter(x => x !== null).flat();
+        const matches: Match[] = await Promise.all(matchesWithoutStats.map(async (match) => {
+            const home = await api.getMatchTeamStats(match.fixture.id, match.teams.home.id);
+            const away = await api.getMatchTeamStats(match.fixture.id, match.teams.away.id);
+            return {
+                ...match,
+                statistics: {
+                    home,
+                    away
+                }
+            }
+        }))
+
+        return NextResponse.json({ matches });
     } catch {
         return NextResponse.json({ error: "Error al obtener los partidos" }, { status: 500 });
     }
