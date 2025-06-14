@@ -2,7 +2,7 @@ import { apiCall } from "@/lib/utils";
 import type { Match, Team, TeamMatchStats } from "@/types/match";
 
 export class FootballApi {
-    private static baseUrl: string = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+    private static baseUrl: string = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     static async getMatches(): Promise<Match[]> {
         const url = this.baseUrl + "/api/team-matches";
         const data = await apiCall<{ matches: Match[] }>(url, { cache: "no-store" });
