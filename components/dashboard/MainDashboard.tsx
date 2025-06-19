@@ -4,7 +4,6 @@ import DateSelector from "@/components/dashboard/DateSelector";
 import TeamMatches from "@/components/dashboard/TeamMatches";
 import MatchCard from "@/components/dashboard/MatchCard";
 import { Match } from "@/types/match";
-import SubNavbar from "./SubNavbar";
 
 interface Props {
   matches: Match[];
@@ -17,8 +16,8 @@ export default function MainDashboard({ matches }: Props) {
 
   return (
     <div className="w-full text-white">
-      <HeaderBar/>
-      <DateSelector/>
+      <HeaderBar />
+      <DateSelector />
       <div className="space-y-4 px-2 mt-4">
         {Object.entries(groupedByLeague).map(([leagueName, leagueMatches]) => (
           <div key={leagueName}>

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function NavbarMobile() {
   const [open, setOpen] = useState(false);
@@ -33,9 +32,8 @@ export default function NavbarMobile() {
 
       {/* Sidebar */}
       <div
-        className={`fixed top-0 right-0 h-full w-[250px] bg-black text-white shadow-lg transform transition-transform duration-300 ease-in-out ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed top-0 right-0 h-full w-[250px] bg-black text-white shadow-lg transform transition-transform duration-300 ease-in-out ${open ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="flex flex-col gap-4 p-6 mt-10">
           {navItems.map((item, idx) => (
