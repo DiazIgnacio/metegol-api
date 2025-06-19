@@ -120,3 +120,11 @@
     @apply bg-background text-foreground;
   }
 }
+
+body {
+  background-image: url('/Background.png');
+  background-size: cover;
+  background-repeat: repeat;
+  background-attachment: fixed;
+  background-position: center;
+}

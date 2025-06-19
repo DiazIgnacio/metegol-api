@@ -10,6 +10,7 @@ export interface Fixture {
     status: {
         long: string;
         short: string;
+        elapsed?: number | null;
     };
 }
 
