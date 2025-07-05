@@ -4,6 +4,14 @@ export interface Team {
     id: number;
 }
 
+export interface League {
+    id: number;
+    name: string;
+    logo: string;
+    country: string;
+    season?: number;
+}
+
 export interface Fixture {
     id: number;
     date: string;
@@ -64,6 +72,7 @@ export const STATISTICS_LABELS = Object.freeze({
 export type TeamMatchStats = { type: StatisticsKeys, value: number | string | null }[];
 
 export interface Match {
+    league: League;
     fixture: Fixture;
     teams: { home: Team; away: Team };
     goals: Goals;
