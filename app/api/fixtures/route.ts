@@ -140,39 +140,27 @@ export async function GET(request: NextRequest) {
         // Add statistics for each match (only for finished matches)
         const matchesWithStats: Match[] = await Promise.all(
             matches.map(async (match) => {
-                // Solo obtener estadísticas para partidos finalizados
-                const isFinished = match.fixture.status.short === "FT" ||
-                    match.fixture.status.short === "AET" ||
-                    match.fixture.status.short === "PEN" ||
-                    match.fixture.status.short === "AWD" || // Awarded (walkover)
-                    match.fixture.status.short === "WO" ||  // Walkover
-                    match.fixture.status.long === "Match Finished" ||
-                    match.fixture.status.long === "Match Finished After Extra Time" ||
-                    match.fixture.status.long === "Match Finished After Penalty" ||
-                    match.fixture.status.long === "Match Awarded";
+                try {
+                    // Fetch stats with timeout
+                    const { home: homeStats, away: awayStats } = await api.getMatchStats(match)
+                    const { home: homeEvents, away: awayEvents } = await api.getMatchEvents(match)
 
 
-                    try {
-                        // Fetch stats with timeout
-                        const { home:homeStats, away:awayStats } = await api.getMatchStats(match)
-                        const { home:homeEvents, away:awayEvents } = await api.getMatchEvents(match)
-
-
-                        return {
-                            ...match,
-                            statistics: {
-                                home: homeStats,
-                                away: awayStats
-                            }, 
-                            events: {
-                                home: homeEvents,
-                                away: awayEvents
-                            }
-                        };
-                    } catch (error) {
-                        console.error(`❌ Error fetching stats for match ${match.fixture.id} (League ${match.league.id}):`, error);
-                        return match;
-                    }
+                    return {
+                        ...match,
+                        statistics: {
+                            home: homeStats,
+                            away: awayStats
+                        },
+                        events: {
+                            home: homeEvents,
+                            away: awayEvents
+                        }
+                    };
+                } catch (error) {
+                    console.error(`❌ Error fetching stats for match ${match.fixture.id} (League ${match.league.id}):`, error);
+                    return match;
+                }
             })
         );
 

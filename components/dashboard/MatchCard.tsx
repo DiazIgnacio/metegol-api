@@ -34,7 +34,7 @@ export default function MatchCard({ match }: Props) {
   return (
     <div className="bg-[#1a1a1a] rounded-lg border border-gray-700 shadow-sm overflow-hidden">
       {/* Header desplegable */}
-      <div 
+      <div
         className="px-4 py-3 cursor-pointer hover:bg-[#252525] transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -97,7 +97,7 @@ export default function MatchCard({ match }: Props) {
                 {match.statistics.home.map((stat, index) => {
                   const awayStat = match.statistics?.away[index];
                   const label = STATISTICS_LABELS[stat.type] || stat.type;
-                  
+
                   return (
                     <div key={index} className="flex items-center justify-between">
                       <div className="flex items-center gap-2 w-[30%]">
@@ -116,28 +116,28 @@ export default function MatchCard({ match }: Props) {
             </div>
           )}
 
-           {match.events && (
-                    <div className="mt-4">
-                      <h3 className="text-sm font-semibold text-yellow-400 mb-2">Eventos</h3>
-                      <ul className="space-y-2">
-                        {[...match.events.home, ...match.events.away].map((event, index) => (
-                          <li key={index} className="flex items-center gap-2">
-                            <span className="text-xs text-gray-300">
-                              {event.time.elapsed}'{event.time.extra ? `+${event.time.extra}` : ""}
-                            </span>
-                            <span className={`text-xs ${event.type === "Card" ? "text-red-500" : "text-yellow-400"}`}>
-                              {event.type === "Card" ? "🟥🟨" : event.type === "Goal" ? "⚽️" : "🔄"}
-                            </span>
-                            <span className="text-xs">{event.player.name}</span>
-                            {event.assist.name && (
-                              <span className="text-xs text-gray-400">asistido por {event.assist.name}</span>
-                            )}
-                            <span className="text-xs text-gray-500">{event.detail}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+          {match.events && (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-yellow-400 mb-2">Eventos</h3>
+              <ul className="space-y-2">
+                {[...match.events.home, ...match.events.away].map((event, index) => (
+                  <li key={index} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-300">
+                      {event.time.elapsed}&apos;{event.time.extra ? `+${event.time.extra}` : ""}
+                    </span>
+                    <span className={`text-xs ${event.type === "Card" ? "text-red-500" : "text-yellow-400"}`}>
+                      {event.type === "Card" ? "🟥🟨" : event.type === "Goal" ? "⚽️" : "🔄"}
+                    </span>
+                    <span className="text-xs">{event.player.name}</span>
+                    {event.assist.name && (
+                      <span className="text-xs text-gray-400">asistido por {event.assist.name}</span>
+                    )}
+                    <span className="text-xs text-gray-500">{event.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Información adicional */}
           <div className="mt-4 pt-3 border-t border-gray-700">
