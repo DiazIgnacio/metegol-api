@@ -152,25 +152,27 @@ export async function GET(request: NextRequest) {
                     match.fixture.status.long === "Match Awarded";
 
 
-                if (isFinished) {
                     try {
                         // Fetch stats with timeout
-                        const { home, away } = await api.getMatchStats(match)
+                        const { home:homeStats, away:awayStats } = await api.getMatchStats(match)
+                        const { home:homeEvents, away:awayEvents } = await api.getMatchEvents(match)
+
 
                         return {
                             ...match,
                             statistics: {
-                                home,
-                                away
+                                home: homeStats,
+                                away: awayStats
+                            }, 
+                            events: {
+                                home: homeEvents,
+                                away: awayEvents
                             }
                         };
                     } catch (error) {
                         console.error(`❌ Error fetching stats for match ${match.fixture.id} (League ${match.league.id}):`, error);
                         return match;
                     }
-                } else {
-                    return match;
-                }
             })
         );
 

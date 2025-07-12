@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import HeaderBar from "@/components/dashboard/HeaderBar";
 import DateSelector from "@/components/dashboard/DateSelector";
 import SubNavbar from "@/components/dashboard/SubNavbar";
-import TeamMatches from "@/components/dashboard/TeamMatches";
 import MatchCard from "@/components/dashboard/MatchCard";
 import { Match } from "@/types/match";
 import { FootballApi } from "@/lib/footballApi";
@@ -126,15 +125,12 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
                     <h3 className="text-md font-bold text-white/80 px-1 mb-1">
                       {leagueNames[parseInt(leagueId)] || `Liga ${leagueId}`}
                     </h3>
-                    {parseInt(leagueId) === 128 ? (
-                      <TeamMatches matches={leagueMatches.slice(0, 8)} />
-                    ) : (
+                    
                       <div className="space-y-2">
                         {leagueMatches.slice(0, 8).map((match) => (
                           <MatchCard key={match.fixture.id} match={match} />
-                        ))}
+                        ))} 
                       </div>
-                    )}
                   </div>
                 ));
               })()
@@ -142,15 +138,11 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
               // Show matches for selected league
               <div>
                 <h3 className="text-md font-bold text-white/80 px-1 mb-1">{leagueName}</h3>
-                {selectedLeague === 128 ? (
-                  <TeamMatches matches={matches.slice(0, 8)} />
-                ) : (
                   <div className="space-y-2">
                     {matches.map((match) => (
                       <MatchCard key={match.fixture.id} match={match} />
                     ))}
                   </div>
-                )}
               </div>
             )}
           </div>

@@ -70,6 +70,39 @@ export const STATISTICS_LABELS = Object.freeze({
 })
 
 export type TeamMatchStats = { type: StatisticsKeys, value: number | string | null }[];
+export enum EventsKeys {
+    CARD = 'Card',
+    GOAL = 'Goal',
+    SUBSTITUTION = 'subst',
+}
+export const EVENTS_LABELS = Object.freeze({
+    [EventsKeys.CARD]: 'Tarjeta',
+    [EventsKeys.GOAL]: 'Gol',
+    [EventsKeys.SUBSTITUTION]: 'Sustitución'
+})
+export type TeamMatchEvents = {
+    type: EventsKeys,
+    time: {
+        elapsed: number;
+        extra: number | null;
+    },
+    team:{
+        id: number,
+        name: string,
+        logo: string
+    },
+    player: {
+        id: number,
+        name: string
+    },
+    assist: {
+        id: number | null,
+        name: string | null
+    },
+    detail: string,
+    comments: string | null
+}[];
+
 
 export interface Match {
     league: League;
@@ -79,5 +112,9 @@ export interface Match {
     statistics?: {
         home: TeamMatchStats;
         away: TeamMatchStats;
+    };
+    events?: {
+        home: TeamMatchEvents;
+        away: TeamMatchEvents;
     };
 }

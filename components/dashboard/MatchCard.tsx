@@ -116,6 +116,29 @@ export default function MatchCard({ match }: Props) {
             </div>
           )}
 
+           {match.events && (
+                    <div className="mt-4">
+                      <h3 className="text-sm font-semibold text-yellow-400 mb-2">Eventos</h3>
+                      <ul className="space-y-2">
+                        {[...match.events.home, ...match.events.away].map((event, index) => (
+                          <li key={index} className="flex items-center gap-2">
+                            <span className="text-xs text-gray-300">
+                              {event.time.elapsed}'{event.time.extra ? `+${event.time.extra}` : ""}
+                            </span>
+                            <span className={`text-xs ${event.type === "Card" ? "text-red-500" : "text-yellow-400"}`}>
+                              {event.type === "Card" ? "🟥🟨" : event.type === "Goal" ? "⚽️" : "🔄"}
+                            </span>
+                            <span className="text-xs">{event.player.name}</span>
+                            {event.assist.name && (
+                              <span className="text-xs text-gray-400">asistido por {event.assist.name}</span>
+                            )}
+                            <span className="text-xs text-gray-500">{event.detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
           {/* Información adicional */}
           <div className="mt-4 pt-3 border-t border-gray-700">
             <div className="text-xs text-white/50">

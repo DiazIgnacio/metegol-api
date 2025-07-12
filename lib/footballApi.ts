@@ -1,5 +1,5 @@
 import { apiCall } from "@/lib/utils";
-import type { Match, Team, TeamMatchStats, League } from "@/types/match";
+import type { Match, Team, TeamMatchStats, League, TeamMatchEvents } from "@/types/match";
 
 export class FootballApi {
     private static baseUrl: string = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -59,6 +59,19 @@ export class FootballApiServer {
             const obj = await this.request<{ team: { id: number, name: string, logo: string }, statistics: TeamMatchStats }[]>("/fixtures/statistics", { fixture: match.fixture.id });
             const home = obj.find(x => x.team.id === match.teams.home.id)?.statistics ?? [] as TeamMatchStats;
             const away = obj.find(x => x.team.id === match.teams.away.id)?.statistics ?? [] as TeamMatchStats;
+
+            return { home, away }
+        } catch (error) {
+            console.error(`Error fetching team stats for match ${match.fixture.id}:`, error);
+            return { home: [], away: [] };
+        }
+    }
+
+    async getMatchEvents(match: Match): Promise<{ home: TeamMatchEvents, away: TeamMatchEvents }> {
+        try {
+            const obj = await this.request<TeamMatchEvents>("/fixtures/events", { fixture: match.fixture.id });
+            const home = obj.filter(x => x.team.id === match.teams.home.id) ?? [] as TeamMatchEvents;
+            const away = obj.filter(x => x.team.id === match.teams.away.id) ?? [] as TeamMatchEvents;
 
             return { home, away }
         } catch (error) {
