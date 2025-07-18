@@ -1,12 +1,12 @@
 "use client";
 
+import React, { useState } from "react";
 import Image from "next/image";
-import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import type { Match } from "@/types/match";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { STATISTICS_LABELS } from "@/types/match";
+import type { Match } from "@/types/match";
+import { StatisticsKeys, EventsKeys } from "@/types/match";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface Props {
   match: Match;
@@ -15,136 +15,156 @@ interface Props {
 export default function MatchCard({ match }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "dd MMM yyyy - HH:mm", { locale: es });
-  };
+  // ==========================
+  // 1) Formateo de fecha
+  // ==========================
+  const formatDate = (dateStr: string) =>
+    format(new Date(dateStr), "dd MMM yyyy - HH:mm", { locale: es });
 
-  const getStatusText = (status: string) => {
-    const statusMap: { [key: string]: string } = {
-      "Match Finished": "Finalizado",
-      "Not Started": "No iniciado",
-      "First Half": "Primer tiempo",
-      "Second Half": "Segundo tiempo",
-      "Halftime": "Entretiempo",
-      "Live": "En vivo",
-    };
-    return statusMap[status] || status;
-  };
+  // ==========================
+  // 2) Estadísticas de posesión (si vienen)
+  // ==========================
+  const homePossession =
+    match.statistics?.home.find((s) => s.type === StatisticsKeys.BALL_POSSESSION)
+      ?.value || 0;
+  const awayPossession =
+    match.statistics?.away.find((s) => s.type === StatisticsKeys.BALL_POSSESSION)
+      ?.value || 0;
+
+  // ==========================
+  // 3) Conteo de tarjetas desde los eventos
+  // ==========================
+  const yellowHome =
+    match.events?.home.reduce(
+      (acc, e) =>
+        acc + (e.type === EventsKeys.CARD && /yellow/i.test(e.detail) ? 1 : 0),
+      0
+    ) ?? 0;
+  const redHome =
+    match.events?.home.reduce(
+      (acc, e) =>
+        acc + (e.type === EventsKeys.CARD && /red/i.test(e.detail) ? 1 : 0),
+      0
+    ) ?? 0;
+  const yellowAway =
+    match.events?.away.reduce(
+      (acc, e) =>
+        acc + (e.type === EventsKeys.CARD && /yellow/i.test(e.detail) ? 1 : 0),
+      0
+    ) ?? 0;
+  const redAway =
+    match.events?.away.reduce(
+      (acc, e) =>
+        acc + (e.type === EventsKeys.CARD && /red/i.test(e.detail) ? 1 : 0),
+      0
+    ) ?? 0;
+
+  // ==========================
+  // 4) Lista de eventos filtrada y ordenada
+  // ==========================
+  const events = [
+    ...(match.events?.home || []),
+    ...(match.events?.away || []),
+  ]
+    .filter((e) => e.type === EventsKeys.GOAL || e.type === EventsKeys.CARD)
+    .sort(
+      (a, b) =>
+        a.time.elapsed * 100 +
+        (a.time.extra || 0) -
+        (b.time.elapsed * 100 + (b.time.extra || 0))
+    );
 
   return (
-    <div className="bg-[#1a1a1a] rounded-lg border border-gray-700 shadow-sm overflow-hidden">
-      {/* Header desplegable */}
+    <div className="bg-[#1a1a1a] rounded-lg border border-gray-700 overflow-hidden">
+      {/* ===== 5) HEADER PRINCIPAL ===== */}
       <div
         className="px-4 py-3 cursor-pointer hover:bg-[#252525] transition-colors"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => setIsExpanded((p) => !p)}
       >
         <div className="flex items-center justify-between">
-          <span className="text-xs text-white/50">{formatDate(match.fixture.date)}</span>
+          <span className="text-xs text-white/50">
+            {formatDate(match.fixture.date)}
+          </span>
           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
-        <div className="flex justify-between items-center mt-2">
-          {/* Home */}
-          <div className="flex items-center gap-2 w-[40%]">
+        <div className="flex w-full items-center justify-center mt-2">
+          {/* Local */}
+          <div className="flex items-center gap-2 flex-1 justify-end"> 
+            <span className="text-sm">{match.teams.home.name}</span>
             <Image
               src={match.teams.home.logo}
-              alt={match.teams.home.name}
               width={24}
               height={24}
+              alt={match.teams.home.name}
             />
-            <span className="text-sm">{match.teams.home.name}</span>
           </div>
-
-          {/* VS / Result */}
-          <div className="text-center text-sm font-semibold w-[20%]">
+          {/* Marcador */}
+          <div className="text-xl font-semibold mx-2">
             {match.goals.home} - {match.goals.away}
           </div>
-
-          {/* Away */}
-          <div className="flex items-center justify-end gap-2 w-[40%]">
-            <span className="text-sm text-right">{match.teams.away.name}</span>
+          {/* Visitante */}
+          <div className="flex items-center gap-2 flex-1 justify-start">
             <Image
               src={match.teams.away.logo}
-              alt={match.teams.away.name}
               width={24}
               height={24}
+              alt={match.teams.away.name}
             />
+            <span className="text-sm">{match.teams.away.name}</span>
           </div>
         </div>
       </div>
 
-      {/* Contenido expandido */}
-      {isExpanded && (
-        <div className="px-4 pb-4 border-t border-gray-700">
-          {/* Información del partido */}
-          <div className="mt-3 mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-white/80">Estado:</span>
-              <span className="text-sm text-lime-400">{getStatusText(match.fixture.status.long)}</span>
-            </div>
-            {match.fixture.status.elapsed && (
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-white/80">Tiempo:</span>
-                <span className="text-sm text-white/70">{match.fixture.status.elapsed}&apos;</span>
-              </div>
-            )}
-          </div>
+      {/* ===== 6) RESUMEN TARJETAS & POSESIÓN ===== */}
+      <div className="px-4 py-2 border-t border-gray-700 flex items-center justify-between text-xs text-white">
+        {/* Local: amarilla, roja */}
+        <div className="flex items-center gap-1">
+          <span>🟨</span>
+          <span>{yellowHome}</span>
+          <span className="ml-2">🟥</span>
+          <span>{redHome}</span>
+        </div>
+        {/* Posesión */}
+        <div>{homePossession}</div>
+        <div>{awayPossession}</div>
+        {/* Visitante: roja, amarilla */}
+        <div className="flex items-center gap-1">
+          <span>🟥</span>
+          <span>{redAway}</span>
+          <span className="ml-2">🟨</span>
+          <span>{yellowAway}</span>
+        </div>
+      </div>
 
-          {/* Estadísticas */}
-          {match.statistics && (
-            <div className="mt-4">
-              <h4 className="text-sm font-semibold text-white/90 mb-3">Estadísticas</h4>
-              <div className="space-y-2">
-                {match.statistics.home.map((stat, index) => {
-                  const awayStat = match.statistics?.away[index];
-                  const label = STATISTICS_LABELS[stat.type] || stat.type;
+      {/* ===== 7) EVENTOS DETALLADOS ===== */}
+      {isExpanded && events.length > 0 && (
+        <div className="px-4 py-3 border-t border-gray-700">
+          <h3 className="text-xs font-semibold text-white/80 mb-2">
+            Eventos
+          </h3>
+          <ul className="space-y-1 text-xs text-white">
+            {events.map((evt, i) => {
+              // minuto formateado
+              const minute = evt.time.extra
+                ? `${evt.time.elapsed}+${evt.time.extra}'`
+                : `${evt.time.elapsed}'`;
+              // icono
+              const icon =
+                evt.type === EventsKeys.GOAL
+                  ? "⚽️"
+                  : /yellow/i.test(evt.detail)
+                  ? "🟨"
+                  : "🟥";
 
-                  return (
-                    <div key={index} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 w-[30%]">
-                        <span className="text-xs text-white/60">{stat.value || 0}</span>
-                      </div>
-                      <div className="text-center w-[40%]">
-                        <span className="text-xs text-white/70">{label}</span>
-                      </div>
-                      <div className="flex items-center justify-end gap-2 w-[30%]">
-                        <span className="text-xs text-white/60">{awayStat?.value || 0}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {match.events && (
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-yellow-400 mb-2">Eventos</h3>
-              <ul className="space-y-2">
-                {[...match.events.home, ...match.events.away].map((event, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <span className="text-xs text-gray-300">
-                      {event.time.elapsed}&apos;{event.time.extra ? `+${event.time.extra}` : ""}
-                    </span>
-                    <span className={`text-xs ${event.type === "Card" ? "text-red-500" : "text-yellow-400"}`}>
-                      {event.type === "Card" ? "🟥🟨" : event.type === "Goal" ? "⚽️" : "🔄"}
-                    </span>
-                    <span className="text-xs">{event.player.name}</span>
-                    {event.assist.name && (
-                      <span className="text-xs text-gray-400">asistido por {event.assist.name}</span>
-                    )}
-                    <span className="text-xs text-gray-500">{event.detail}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Información adicional */}
-          <div className="mt-4 pt-3 border-t border-gray-700">
-            <div className="text-xs text-white/50">
-              ID del partido: {match.fixture.id}
-            </div>
-          </div>
+              return (
+                <li key={i} className="flex items-center gap-2">
+                  <span className="text-white/70">{minute}</span>
+                  <span>{icon}</span>
+                  <span>{evt.player.name}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </div>

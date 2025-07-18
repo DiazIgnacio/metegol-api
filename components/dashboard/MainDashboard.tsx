@@ -14,8 +14,8 @@ interface Props {
   initialMatches?: Match[];
 }
 
-// League name mappings
-const leagueNames: { [key: number]: string } = {
+// Mapeo de nombres de liga
+const leagueNames: Record<number, string> = {
   128: "Liga Profesional de Futbol",
   129: "Primera Nacional",
   130: "Copa Argentina",
@@ -27,26 +27,29 @@ const leagueNames: { [key: number]: string } = {
 
 export default function MainDashboard({ initialMatches = [] }: Props) {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedLeague, setSelectedLeague] = useState<number | null>(null); // null means show all leagues
+  const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   const [loading, setLoading] = useState(false);
 
+  // Estado para search
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Fetch de partidos
   const fetchMatches = async (date: Date, leagueId: number | null) => {
     setLoading(true);
     try {
       const dateStr = format(date, "yyyy-MM-dd");
       let newMatches: Match[];
-
       if (leagueId === null) {
-        // Fetch matches from ALL available leagues
-        newMatches = await FootballApi.getMultipleLeaguesMatches(dateStr, [128, 129, 130, 2, 3, 848, 15]);
+        newMatches = await FootballApi.getMultipleLeaguesMatches(dateStr, [
+          128, 129, 130, 2, 3, 848, 15,
+        ]);
       } else {
         newMatches = await FootballApi.getMatches(dateStr, leagueId);
       }
-
       setMatches(newMatches);
-    } catch (error) {
-      console.error("Error fetching matches:", error);
+    } catch (err) {
+      console.error("Error fetching matches:", err);
     } finally {
       setLoading(false);
     }
@@ -56,102 +59,100 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
     fetchMatches(selectedDate, selectedLeague);
   }, [selectedDate, selectedLeague]);
 
-  const handleDateChange = (date: Date) => {
-    setSelectedDate(date);
-  };
+  // Filtrar por término de búsqueda
+  const filtered = matches.filter((m) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      m.teams.home.name.toLowerCase().includes(term) ||
+      m.teams.away.name.toLowerCase().includes(term)
+    );
+  });
 
-  const handleLeagueChange = (leagueId: number | null) => {
-    setSelectedLeague(leagueId);
-  };
+  // Contar en vivo
+  const liveCount = filtered.filter(
+    (m) => m.fixture.status.short === "Live"
+  ).length;
 
-  const leagueName = selectedLeague ? (leagueNames[selectedLeague] || "Liga Seleccionada") : "Todas las Ligas";
+  // Agrupar por liga sólo si estamos en “Todas las Ligas”
+  const grouped = filtered.reduce<Record<number, Match[]>>((acc, m) => {
+    const id = m.league.id;
+    if (!acc[id]) acc[id] = [];
+    acc[id].push(m);
+    return acc;
+  }, {});
 
-  const formatSelectedDate = (date: Date) => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return "Hoy";
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Ayer";
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-      return "Mañana";
-    } else {
-      return format(date, "EEEE dd 'de' MMMM 'de' yyyy", { locale: es });
-    }
-  };
+  // Etiqueta para la liga seleccionada
+  const leagueLabel =
+    selectedLeague !== null
+      ? leagueNames[selectedLeague] || `Liga ${selectedLeague}`
+      : "Todas las Ligas";
 
   return (
     <div className="w-full text-white">
-      <HeaderBar />
-      <DateSelector selectedDate={selectedDate} onDateChange={handleDateChange} />
+      {/* Header con search */}
+      <HeaderBar
+        liveCount={liveCount}
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+      />
 
-      {/* Display selected date */}
-      <div className="px-4 mt-3 mb-2">
-        <div className="text-center">
-          <span className="text-sm text-white/60">Partidos del </span>
-          <span className="text-sm font-semibold text-lime-400">{formatSelectedDate(selectedDate)}</span>
-        </div>
-      </div>
+      {/* Selector de fecha */}
+      <DateSelector
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+      />
 
-      <div className="px-2 mt-4">
-        <SubNavbar selectedLeague={selectedLeague} onLeagueChange={handleLeagueChange} />
-      </div>
+      {/* Contenido */}
       <div className="space-y-4 px-2 mt-4">
         {loading && (
-          <div className="text-center py-4">
-            <div className="text-white/60">Cargando partidos...</div>
+          <div className="text-center py-4 text-white/60">
+            Cargando partidos...
           </div>
         )}
-        {!loading && matches.length > 0 && (
-          <div>
-            {selectedLeague === null ? (
-              // Show matches grouped by league
-              (() => {
-                const groupedMatches = matches.reduce((acc, match) => {
-                  const leagueId = match.league.id;
-                  if (!acc[leagueId]) {
-                    acc[leagueId] = [];
-                  }
-                  acc[leagueId].push(match);
-                  return acc;
-                }, {} as Record<number, Match[]>);
 
-                return Object.entries(groupedMatches).map(([leagueId, leagueMatches]) => (
-                  <div key={leagueId} className="mb-6">
-                    <h3 className="text-md font-bold text-white/80 px-1 mb-1">
-                      {leagueNames[parseInt(leagueId)] || `Liga ${leagueId}`}
-                    </h3>
-                    
-                      <div className="space-y-2">
-                        {leagueMatches.slice(0, 8).map((match) => (
-                          <MatchCard key={match.fixture.id} match={match} />
-                        ))} 
-                      </div>
-                  </div>
-                ));
-              })()
-            ) : (
-              // Show matches for selected league
-              <div>
-                <h3 className="text-md font-bold text-white/80 px-1 mb-1">{leagueName}</h3>
-                  <div className="space-y-2">
-                    {matches.map((match) => (
-                      <MatchCard key={match.fixture.id} match={match} />
-                    ))}
-                  </div>
+        {!loading && filtered.length === 0 && (
+          <div className="text-center py-8 text-white/60">
+            No hay partidos que coincidan con tu búsqueda.
+          </div>
+        )}
+
+        {!loading && filtered.length > 0 && (
+          selectedLeague === null ? (
+            // Vista “Todas las Ligas”
+            Object.entries(grouped).map(([leagueId, ms]) => (
+              <div key={leagueId} className="mb-6">
+                <h3 className="text-md font-bold text-white/80 px-1 mb-1">
+                  {leagueNames[+leagueId] || `Liga ${leagueId}`}
+                </h3>
+                <div className="space-y-2">
+                  {ms.map((m) => (
+                    <MatchCard key={m.fixture.id} match={m} />
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
+            ))
+          ) : (
+            // Vista de liga única
+            <div>
+              <h3 className="text-md font-bold text-white/80 px-1 mb-1">
+                {leagueLabel}
+              </h3>
+              <div className="space-y-2">
+                {filtered.map((m) => (
+                  <MatchCard key={m.fixture.id} match={m} />
+                ))}
+              </div>
+            </div>
+          )
         )}
-        {!loading && matches.length === 0 && (
-          <div className="text-center py-8">
-            <div className="text-white/60">No hay partidos disponibles para esta fecha y liga.</div>
-          </div>
-        )}
+
+        {/* SubNavbar para cambiar liga */}
+        <div className="px-2 mt-4">
+          <SubNavbar
+            selectedLeague={selectedLeague}
+            onLeagueChange={setSelectedLeague}
+          />
+        </div>
       </div>
     </div>
   );
