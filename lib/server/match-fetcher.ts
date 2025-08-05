@@ -10,3 +10,5 @@ import type { Match } from "@/types/match";
 export async function getMatches(): Promise<Match[]> {
   return await FootballApi.getMatches(); // Ya llama a tu `/api/team-matches`
 }
+
+

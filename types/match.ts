@@ -118,3 +118,27 @@ export interface Match {
         away: TeamMatchEvents;
     };
 }
+
+export interface LineupTeam {
+  team: { id: number; name: string; logo: string };
+  coach: { id: number; name: string };
+  formation: string;
+  startXI: {
+    player: {
+      id: number;
+      name: string;
+      number: number;
+      pos: string;
+      grid?: string;
+    };
+  }[];
+  substitutes: {
+    player: {
+      id: number;
+      name: string;
+      number: number;
+      pos: string;
+      grid?: string;
+    };
+  }[];
+}
