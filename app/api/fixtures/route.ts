@@ -144,6 +144,19 @@ export async function GET(request: NextRequest) {
                     // Fetch stats with timeout
                     const { home: homeStats, away: awayStats } = await api.getMatchStats(match)
                     const { home: homeEvents, away: awayEvents } = await api.getMatchEvents(match)
+                    
+                    // Debug logging for problematic matches
+                    if (match.teams.home.name.includes("Kairat") || match.teams.home.name.includes("Celtic") || 
+                        match.teams.away.name.includes("Kairat") || match.teams.away.name.includes("Celtic")) {
+                        console.error(`🔍 API DEBUG for ${match.teams.home.name} vs ${match.teams.away.name}:`, {
+                            fixtureId: match.fixture.id,
+                            originalGoals: { home: match.goals.home, away: match.goals.away },
+                            homeEvents: homeEvents.length,
+                            awayEvents: awayEvents.length,
+                            homeGoalEvents: homeEvents.filter(e => e.type === "Goal"),
+                            awayGoalEvents: awayEvents.filter(e => e.type === "Goal")
+                        });
+                    }
 
 
                     return {

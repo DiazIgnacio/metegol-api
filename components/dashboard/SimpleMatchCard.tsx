@@ -29,6 +29,25 @@ export default function SimpleMatchCard({ match }: Props) {
   const isLive = ["1H", "2H", "LIVE", "ET", "P"].includes(match.fixture.status.short);
   const isFinished = match.fixture.status.short === "FT";
   const isUpcoming = match.fixture.status.short === "NS";
+  
+  // Debug logging for problematic matches
+  if (match.teams.home.name.includes("Kairat") || match.teams.home.name.includes("Celtic") || 
+      match.teams.away.name.includes("Kairat") || match.teams.away.name.includes("Celtic")) {
+    console.log('SIMPLE MATCH DEBUG:', {
+      teams: `${match.teams.home.name} vs ${match.teams.away.name}`,
+      fixtureId: match.fixture.id,
+      status: match.fixture.status.short,
+      elapsed: match.fixture.status.elapsed,
+      isLive,
+      officialGoals: { home: match.goals.home, away: match.goals.away },
+      homeTeamId: match.teams.home.id,
+      awayTeamId: match.teams.away.id,
+      homeEvents: match.events?.home.length || 0,
+      awayEvents: match.events?.away.length || 0,
+      homeGoals: match.events?.home.filter(e => e.type === "Goal") || [],
+      awayGoals: match.events?.away.filter(e => e.type === "Goal") || []
+    });
+  }
 
   // Stats for basic info
   const yellowsHome = match.events?.home.filter((e) => e.type === "Card" && e.detail.includes("Yellow")).length || 0;
@@ -39,11 +58,24 @@ export default function SimpleMatchCard({ match }: Props) {
   const possHome = getStat(match.statistics?.home, "Ball Possession");
   const possAway = getStat(match.statistics?.away, "Ball Possession");
   
-  const goalsHome = match.events?.home.filter((e) => e.type === "Goal") || [];
-  const goalsAway = match.events?.away.filter((e) => e.type === "Goal") || [];
+  // Filter out missed penalties from penalty shootout
+  const goalsHome = match.events?.home.filter((e) => 
+    e.type === "Goal" && 
+    !(e.detail === "Missed Penalty" && e.comments === "Penalty Shootout")
+  ) || [];
+  const goalsAway = match.events?.away.filter((e) => 
+    e.type === "Goal" && 
+    !(e.detail === "Missed Penalty" && e.comments === "Penalty Shootout")
+  ) || [];
 
   const formatTime = () => {
-    if (isLive) return `${match.fixture.status.elapsed}&apos;`;
+    if (isLive) {
+      const minute = match.fixture.status.elapsed;
+      if (minute !== null && minute !== undefined) {
+        return `${minute}mins`;
+      }
+      return "EN VIVO";
+    }
     if (isUpcoming) return new Date(match.fixture.date).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
     if (isFinished) return "FT";
     return "";
@@ -68,9 +100,9 @@ export default function SimpleMatchCard({ match }: Props) {
         </div>
 
         {/* Home Team */}
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center justify-center gap-2 flex-1 min-w-0">
           <Image src={home.logo} alt={home.name} width={24} height={24} className="rounded-full bg-white" />
-          <span className="truncate text-sm font-semibold text-white">{home.name}</span>
+          <span className="text-xs font-semibold text-white break-words leading-tight text-center">{home.name}</span>
         </div>
 
         {/* Score */}
@@ -85,8 +117,8 @@ export default function SimpleMatchCard({ match }: Props) {
         </div>
 
         {/* Away Team */}
-        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-          <span className="truncate text-sm font-semibold text-white text-right">{away.name}</span>
+        <div className="flex items-center justify-center gap-2 flex-1 min-w-0">
+          <span className="text-xs font-semibold text-white break-words leading-tight text-center">{away.name}</span>
           <Image src={away.logo} alt={away.name} width={24} height={24} className="rounded-full bg-white" />
         </div>
 
@@ -100,72 +132,76 @@ export default function SimpleMatchCard({ match }: Props) {
         </div>
       </div>
 
-      {/* Basic Info Section */}
-      {showBasicInfo && (
-        <div className="px-3 pb-3 bg-[#0f1419] border-t border-[#2a2e39]">
-          {/* Cards and Possession */}
-          <div className="grid grid-cols-3 gap-4 mb-3 text-xs text-white/80">
-            {/* Home Team Cards */}
-            <div className="flex flex-col items-center gap-1">
-              <div className="text-white/60 text-[10px]">{match.teams.home.name}</div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <span>🟨</span>
-                  <span>{yellowsHome}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span>🟥</span>
-                  <span>{redsHome}</span>
-                </div>
-              </div>
+      {/* Cards and Possession Row - Always visible when match has started */}
+      {!isUpcoming && (
+        <div className="flex items-center justify-between px-3 py-2 bg-[#0f1419] border-t border-[#2a2e39] text-xs">
+          {/* Home Team Cards */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <span>🟨</span>
+              <span className="text-white/80">{yellowsHome}</span>
             </div>
-
-            {/* Possession */}
-            <div className="text-center">
-              <div className="text-white/60 mb-1">Posesión</div>
-              <div className="flex items-center justify-center gap-2">
-                <span className="font-semibold">{possHome}</span>
-                <span className="text-white/40">—</span>
-                <span className="font-semibold">{possAway}</span>
-              </div>
-            </div>
-
-            {/* Away Team Cards */}
-            <div className="flex flex-col items-center gap-1">
-              <div className="text-white/60 text-[10px]">{match.teams.away.name}</div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <span>🟨</span>
-                  <span>{yellowsAway}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span>🟥</span>
-                  <span>{redsAway}</span>
-                </div>
-              </div>
+            <div className="flex items-center gap-1">
+              <span>🟥</span>
+              <span className="text-white/80">{redsHome}</span>
             </div>
           </div>
 
+          {/* Possession */}
+          <div className="flex items-center gap-2 text-white/80">
+            <span className="font-semibold">{possHome}</span>
+            <span className="text-white/50 text-[10px]">POSESIÓN</span>
+            <span className="font-semibold">{possAway}</span>
+          </div>
+
+          {/* Away Team Cards */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <span>🟥</span>
+              <span className="text-white/80">{redsAway}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span>🟨</span>
+              <span className="text-white/80">{yellowsAway}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Basic Info Section */}
+      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showBasicInfo ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="px-3 pb-3 bg-[#0f1419] border-t border-[#2a2e39]">
+
           {/* Goals */}
           {(goalsHome.length > 0 || goalsAway.length > 0) && (
-            <div className="grid grid-cols-2 gap-3 mb-3 text-xs">
+            <div className="grid grid-cols-2 mt-2 gap-3 mb-3 text-xs">
               <div className="flex flex-col gap-1">
-                {goalsHome.map((goal, i) => (
-                  <div key={i} className="flex items-center gap-2 text-white/90">
-                    <span>⚽</span>
-                    <span>{goal.time.elapsed}&apos;</span>
-                    <span>{goal.player.name}</span>
-                  </div>
-                ))}
+                {goalsHome.map((goal, i) => {
+                  const isPenalty = goal.detail === "Penalty" && goal.comments !== "Penalty Shootout";
+                  const isPenaltyShootout = goal.detail === "Penalty" && goal.comments === "Penalty Shootout";
+                  const timeDisplay = isPenaltyShootout ? "PEN" : `${goal.time.elapsed}mins`;
+                  return (
+                    <div key={i} className="flex items-center gap-2 text-white/90">
+                      <span>{isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}</span>
+                      <span>{timeDisplay}</span>
+                      <span>{goal.player.name}</span>
+                    </div>
+                  );
+                })}
               </div>
               <div className="flex flex-col gap-1 items-end">
-                {goalsAway.map((goal, i) => (
-                  <div key={i} className="flex items-center gap-2 text-white/90">
-                    <span>{goal.player.name}</span>
-                    <span>{goal.time.elapsed}&apos;</span>
-                    <span>⚽</span>
-                  </div>
-                ))}
+                {goalsAway.map((goal, i) => {
+                  const isPenalty = goal.detail === "Penalty" && goal.comments !== "Penalty Shootout";
+                  const isPenaltyShootout = goal.detail === "Penalty" && goal.comments === "Penalty Shootout";
+                  const timeDisplay = isPenaltyShootout ? "PEN" : `${goal.time.elapsed}mins`;
+                  return (
+                    <div key={i} className="flex items-center gap-2 text-white/90">
+                      <span>{goal.player.name}</span>
+                      <span>{timeDisplay}</span>
+                      <span>{isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -183,10 +219,10 @@ export default function SimpleMatchCard({ match }: Props) {
             </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Advanced Section with Tabs */}
-      {showBasicInfo && showAdvanced && (
+      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showBasicInfo && showAdvanced ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
         <div className="px-3 pb-3 bg-[#0a0e13] border-t border-[#2a2e39]">
           {/* Tabs */}
           <div className="flex text-xs mb-3 gap-1">
@@ -231,7 +267,7 @@ export default function SimpleMatchCard({ match }: Props) {
             )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -272,7 +308,7 @@ function LiveMap({ minute }: { minute: number | null }) {
       <div className="text-xs text-white/70 text-center z-10">
         <div className="mb-1">Mapa de juego en vivo</div>
         <div className="text-[#66e192] font-semibold">
-          {minute ? `${minute}&apos;` : "Partido no iniciado"}
+          {minute ? `${minute}mins` : "Partido no iniciado"}
         </div>
       </div>
     </div>
@@ -303,27 +339,6 @@ function translateEventType(type?: string): string {
   return translations[type || ''] || type || '';
 }
 
-// Función para traducir detalles de eventos al español  
-function translateEventDetail(detail?: string): string {
-  if (!detail) return '';
-  
-  const translations: Record<string, string> = {
-    'Yellow Card': 'Amarilla',
-    'Red Card': 'Roja', 
-    'Second Yellow card': 'Segunda amarilla',
-    'Normal Goal': 'Gol normal',
-    'Penalty': 'Penal',
-    'Own Goal': 'Autogol',
-    'Header': 'Cabezazo',
-    'Left foot': 'Pie izquierdo',
-    'Right foot': 'Pie derecho',
-    'Free kick': 'Tiro libre',
-    'Corner': 'Córner',
-    'Missed Penalty': 'Penal errado'
-  };
-  
-  return translations[detail] || detail;
-}
 
 function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
   if (!events.length) {
@@ -352,13 +367,12 @@ function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
         };
         
         const translatedType = translateEventType(e?.type);
-        const translatedDetail = translateEventDetail(e?.detail);
         
         return (
-          <div key={i} className="flex items-center justify-between text-xs text-white/75 py-1 border-b border-white/10">
-            <span className="text-white/60 w-8">{e?.time?.elapsed ?? "—"}&apos;</span>
+          <div key={i} className="flex items-center justify-between text-xs space-x-2 text-white/75 py-1 border-b border-white/10">
+            <span className="text-white/60 w-8">{e?.time?.elapsed ?? "—"}mins</span>
             <span className="flex-1 mx-2">
-              {translatedType} {translatedDetail && `• ${translatedDetail}`}
+              | {translatedType}
             </span>
             <span className="text-right text-white/80 truncate max-w-[100px]">
               {e?.player?.name ?? "—"}

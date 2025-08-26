@@ -7,6 +7,7 @@ import type {
   TeamMatchEvents,
   LineupTeam,
 } from "@/types/match";
+import { EventsKeys } from "@/types/match";
 
 export class FootballApi {
   private static baseUrl: string =
@@ -130,15 +131,45 @@ export class FootballApiServer {
     match: Match
   ): Promise<{ home: TeamMatchEvents; away: TeamMatchEvents }> {
     try {
-      const obj = await this.request<TeamMatchEvents>(
+      const events = await this.request<Array<{
+        type: string,
+        time: { elapsed: number; extra: number | null },
+        team: { id: number, name: string, logo: string },
+        player: { id: number, name: string },
+        assist: { id: number | null, name: string | null },
+        detail: string,
+        comments: string | null
+      }>>(
         "/fixtures/events",
         { fixture: match.fixture.id }
       );
 
-      const home =
-        obj.filter((x) => x.team.id === match.teams.home.id) ?? [];
-      const away =
-        obj.filter((x) => x.team.id === match.teams.away.id) ?? [];
+      // Debug logging for problematic matches
+      if (match.teams.home.name.includes("Kairat") || match.teams.home.name.includes("Celtic") || 
+          match.teams.away.name.includes("Kairat") || match.teams.away.name.includes("Celtic")) {
+          console.log(`EVENTS API DEBUG for ${match.teams.home.name} vs ${match.teams.away.name}:`, {
+              fixtureId: match.fixture.id,
+              totalEvents: events.length,
+              homeTeamId: match.teams.home.id,
+              awayTeamId: match.teams.away.id,
+              allEvents: events.map(e => ({ 
+                  type: e.type, 
+                  time: e.time.elapsed, 
+                  teamId: e.team.id, 
+                  teamName: e.team.name,
+                  player: e.player.name 
+              }))
+          });
+      }
+
+      const home = events.filter((x) => x.team.id === match.teams.home.id).map(event => ({
+        ...event,
+        type: event.type as EventsKeys
+      }));
+      const away = events.filter((x) => x.team.id === match.teams.away.id).map(event => ({
+        ...event,
+        type: event.type as EventsKeys
+      }));
 
       return { home, away };
     } catch (error) {

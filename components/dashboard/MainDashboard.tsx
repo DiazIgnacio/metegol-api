@@ -100,19 +100,21 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
       : "Todas las Ligas";
 
   return (
-    <div className="w-full text-white">
-      <HeaderBar
-        liveCount={liveCount}
-        searchTerm={searchTerm}
-        onSearchTermChange={setSearchTerm}
-      />
+    <div className="w-full h-full flex flex-col text-white">
+      <div className="flex-shrink-0">
+        <HeaderBar
+          liveCount={liveCount}
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+        />
 
-      <DateSelector
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-      />
+        <DateSelector
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
+      </div>
 
-      <div className="space-y-4 px-2 mt-4">
+      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-4 px-2 mt-4">
         {loading && (
           <div className="text-center py-4 text-white/60">
             Cargando partidos...
@@ -155,15 +157,16 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
             </div>
           )
         )}
-
-        <div className="px-2 mt-4">
-          <SubNavbar
-            selectedLeague={selectedLeague}
-            onLeagueChange={(id) => {
-              setSelectedLeague(id);
-            }}                                               // ⬅️ NUEVO
-          />
-        </div>
+      </div>
+      
+      {/* Fixed bottom navigation */}
+      <div className="flex-shrink-0 px-2 pb-2">
+        <SubNavbar
+          selectedLeague={selectedLeague}
+          onLeagueChange={(id) => {
+            setSelectedLeague(id);
+          }}
+        />
       </div>
     </div>
   );
