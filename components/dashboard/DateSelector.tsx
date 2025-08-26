@@ -37,7 +37,7 @@ export default function DateSelector({
   ];
 
   return (
-    <div className="flex items-center px-4 py-2 gap-2 overflow-x-auto scrollbar-none">
+    <div className="flex items-center px-2 py-1.5 gap-1.5 overflow-x-auto scrollbar-none">
       {quickDates.map(({ label, date }) => {
         const selected = isSameDay(selectedDate, date);
         return (
@@ -46,15 +46,17 @@ export default function DateSelector({
             onClick={() => onDateChange(date)}
             className={`
               flex flex-col items-center justify-center
-              px-4 py-2 rounded-lg border text-center whitespace-nowrap text-xs
-              transition-colors w-1/4
+              px-2 py-1.5 rounded-lg border text-center whitespace-nowrap text-xs
+              transition-colors flex-1 min-w-0
               ${selected
                 ? "border-lime-500 text-lime-500 font-semibold"
                 : "border-gray-700 text-white/70 hover:bg-[#333]"}
             `}
           >
-            <span>{label}</span>
-            <span className="mt-0.5">{format(date, "dd MMM", { locale: es })}</span>
+            <span className="text-[10px] md:text-xs">{label}</span>
+            <span className="mt-0.5 text-[9px] md:text-xs leading-tight">
+              {format(date, "dd MMM", { locale: es })}
+            </span>
           </button>
         );
       })}
@@ -65,13 +67,13 @@ export default function DateSelector({
             onClick={() => setOpen((o) => !o)}
             className={`
               flex items-center gap-1
-              px-4 py-2 rounded-lg border text-xs
+              px-2 py-1.5 rounded-lg border text-xs flex-shrink-0
               border-gray-700 text-white/70 hover:bg-[#333]
               transition-colors
             `}
           >
-            <CalendarIcon className="w-4 h-4" />
-            <span>Calendario</span>
+            <CalendarIcon className="w-3 h-3 md:w-4 md:h-4" />
+            <span className="text-[10px] md:text-xs">Cal</span>
           </button>
         </PopoverTrigger>
 

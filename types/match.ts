@@ -10,6 +10,12 @@ export interface League {
     logo: string;
     country: string;
     season?: number;
+    league?: {
+        id: number;
+        name: string;
+        logo: string;
+        country?: string;
+    };
 }
 
 export interface Fixture {

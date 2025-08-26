@@ -19,9 +19,7 @@ export class FootballApi {
 
     const url =
       this.baseUrl + "/api/fixtures" + (params.toString() ? `?${params}` : "");
-    const data = await apiCall<{ matches: Match[] }>(url, {
-      cache: "no-store",
-    });
+    const data = await apiCall<{ matches: Match[] }>(url, { cache: "no-store" });
     return data.matches || [];
   }
 
@@ -31,23 +29,24 @@ export class FootballApi {
   ): Promise<Match[]> {
     const params = new URLSearchParams();
     if (date) params.append("date", date);
-    if (leagues?.length) {
-      params.append("leagues", leagues.join(","));
-    }
+    if (leagues?.length) params.append("leagues", leagues.join(","));
 
     const url =
       this.baseUrl + "/api/fixtures" + (params.toString() ? `?${params}` : "");
-    const data = await apiCall<{ matches: Match[] }>(url, {
-      cache: "no-store",
-    });
+    const data = await apiCall<{ matches: Match[] }>(url, { cache: "no-store" });
     return data.matches || [];
   }
 
   static async getLeagues(): Promise<League[]> {
     const url = this.baseUrl + "/api/leagues";
-    const data = await apiCall<{ leagues: League[] }>(url, {
-      cache: "no-store",
-    });
+    const data = await apiCall<{ leagues: League[] }>(url, { cache: "no-store" });
+    return data.leagues || [];
+  }
+
+  // ⬇️ NUEVO: usa tu API interna (no expone la API key)
+  static async getLeaguesByCountry(country: string): Promise<League[]> {
+    const url = this.baseUrl + `/api/leagues?country=${encodeURIComponent(country)}`;
+    const data = await apiCall<{ leagues: League[] }>(url, { cache: "no-store" });
     return data.leagues || [];
   }
 }

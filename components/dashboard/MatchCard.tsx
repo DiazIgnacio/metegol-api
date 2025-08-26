@@ -1,255 +1,325 @@
 "use client";
 
 import Image from "next/image";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
 import { useMemo, useState } from "react";
 import type { Match } from "@/types/match";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { useLineups } from "@/hooks/useLineups";
+import { Lineups } from "@/components/Lineups";
 
-const STATISTICS_LABELS_ES: { [key: string]: string } = {
-  "Shots on Goal": "Tiros al arco",
-  "Shots off Goal": "Tiros desviados",
-  "Total Shots": "Total de tiros",
-  "Blocked Shots": "Tiros bloqueados",
-  "Shots insidebox": "Tiros dentro del área",
-  "Shots outsidebox": "Tiros fuera del área",
-  "Fouls": "Faltas",
-  "Corner Kicks": "Tiros de esquina",
-  "Offsides": "Offsides",
-  "Ball Possession": "Posesión de balón",
-  "Yellow Cards": "Tarjetas amarillas",
-  "Red Cards": "Tarjetas rojas",
-  "Goalkeeper Saves": "Atajadas del arquero",
-  "Total passes": "Pases totales",
-  "Passes accurate": "Pases precisos",
-  "Passes %": "Precisión de pases",
-  "expected_goals": "Goles esperados",
-  "goals_prevented": "Goles evitados",
+const LIVE_STATES = ["1H", "2H", "LIVE", "ET", "P"];
+
+const getStat = (
+  stats: { type: string; value: string | number | null }[] | undefined,
+  type: string
+) => {
+  const f = stats?.find((s) => s.type === type);
+  return f?.value ?? null;
 };
-
-function getStat(label: string, stats?: { type: string; value: string | number | null }[]) {
-  const found = stats?.find((s) => s.type === label);
-  return found && found.value != null ? Number(found.value) : 0;
-}
 
 interface Props {
   match: Match;
 }
 
 export default function MatchCard({ match }: Props) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<'stats' | 'lineup' | 'extra'>('stats');
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"map" | "lineup" | "timeline">("map");
+
+  const isLive = LIVE_STATES.includes(match.fixture.status.short);
+  const minute = match.fixture.status.elapsed ?? 0;
+  const isFinished = match.fixture.status.short === "FT";
 
   const home = match.teams.home;
   const away = match.teams.away;
 
-  const isLive = ["1H", "2H", "LIVE"].includes(match.fixture.status.short);
-  const isFinished = match.fixture.status.short === "FT";
-  const isUpcoming = match.fixture.status.short === "NS";
+  // eventos básicos
+  const goalsHome = match.events?.home.filter((e) => e.type === "Goal") ?? [];
+  const goalsAway = match.events?.away.filter((e) => e.type === "Goal") ?? [];
+  const yellowsHome =
+    match.events?.home.filter((e) => e.type === "Card" && e.detail.includes("Yellow")) ?? [];
+  const redsHome =
+    match.events?.home.filter((e) => e.type === "Card" && e.detail.includes("Red")) ?? [];
+  const yellowsAway =
+    match.events?.away.filter((e) => e.type === "Card" && e.detail.includes("Yellow")) ?? [];
+  const redsAway =
+    match.events?.away.filter((e) => e.type === "Card" && e.detail.includes("Red")) ?? [];
 
-  const formatMinute = () => {
-    return isLive
-      ? `${match.fixture.status.elapsed}'`
-      : isUpcoming
-      ? format(new Date(match.fixture.date), "HH:mm", { locale: es })
-      : "";
-  };
+  // posesión
+  const possHome = String(getStat(match.statistics?.home, "Ball Possession") ?? "—");
+  const possAway = String(getStat(match.statistics?.away, "Ball Possession") ?? "—");
 
-  const events = useMemo(() => {
-    return {
-      goalsHome: match.events?.home.filter((e) => e.type === "Goal") || [],
-      goalsAway: match.events?.away.filter((e) => e.type === "Goal") || [],
-      yellowHome: match.events?.home.filter((e) => e.type === "Card" && e.detail.includes("Yellow")) || [],
-      redHome: match.events?.home.filter((e) => e.type === "Card" && e.detail.includes("Red")) || [],
-      yellowAway: match.events?.away.filter((e) => e.type === "Card" && e.detail.includes("Yellow")) || [],
-      redAway: match.events?.away.filter((e) => e.type === "Card" && e.detail.includes("Red")) || [],
-    };
-  }, [match]);
+  // “Partidazo” simple: muchos goles o final ajustado
+  const totalGoals = (match.goals?.home ?? 0) + (match.goals?.away ?? 0);
+  const diff = Math.abs((match.goals?.home ?? 0) - (match.goals?.away ?? 0));
+  const partidazo = totalGoals >= 3 || (minute >= 75 && diff <= 1);
 
-  const { lineups, loading } = useLineups(match.fixture.id, match.teams.home.id, match.teams.away.id);
-  const hasLineup = !!lineups.home?.startXI?.length || !!lineups.away?.startXI?.length;
-
-  const hasDetailedStats = (match.statistics?.home?.length ?? 0) > 0 && (match.statistics?.away?.length ?? 0) > 0;
-
-  const homeShots = getStat("Total Shots", match.statistics?.home);
-  const awayShots = getStat("Total Shots", match.statistics?.away);
-  const totalGoals = match.goals.home + match.goals.away;
-  const totalCards = events.yellowHome.length + events.redHome.length + events.yellowAway.length + events.redAway.length;
-  const elapsed = match.fixture.status.elapsed || 0;
-
-  let score = 0;
-  score += (homeShots + awayShots) * 1.5;
-  score += totalGoals * 8;
-  score += totalCards * 1;
-  score += elapsed / 6;
-  const fuegoNivel = Math.min(5, Math.floor(score / 10));
-
-  const getBarStyle = (val: number, max = 100) => ({ width: `${(val / max) * 100}%` });
+  const canal = (match as { broadcast?: { name?: string } })?.broadcast?.name ?? "ESPN";
 
   return (
-    <div className="bg-[#1a1a1a] rounded-xl p-4 text-white w-full max-w-md mx-auto border border-gray-700">
-      {/* Picantómetro */}
-      {fuegoNivel > 0 && (
-        <div className="text-sm text-orange-400 font-semibold flex items-center gap-1 mb-2">
-          <span className="text-white/70 ml-2">Picantómetro:</span>
-          {"🔥".repeat(fuegoNivel)}
+    <div className="bg-[#12161c] rounded-xl text-white w-full max-w-md mx-auto border border-[#2a2e39] overflow-hidden shadow-[0_6px_20px_rgba(0,0,0,0.35)]">
+      {/* Faja superior: minuto/estado a la izquierda, badge a la derecha */}
+      <div className="flex items-center justify-between px-3 py-2 bg-[#0f1319]">
+        <div className="flex items-baseline gap-2">
+          {isLive && (
+            <span className="text-[20px] leading-none font-extrabold text-[#ffd95b]">
+              {minute}&apos;
+            </span>
+          )}
+          {!isLive && !isFinished && (
+            <span className="text-[12px] font-semibold text-white/80 bg-[#222a35] px-2 py-[2px] rounded">
+              {new Date(match.fixture.date).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+          {isFinished && (
+            <span className="text-[12px] font-semibold text-white/80 bg-[#222a35] px-2 py-[2px] rounded">
+              Finalizado
+            </span>
+          )}
+        </div>
+        {partidazo && (
+          <div className="flex items-center gap-1 text-[12px]">
+            <span className="text-white/85">Partidazo</span>
+            <span>🔥</span>
+          </div>
+        )}
+      </div>
+
+      {/* Línea principal: escudos + marcador + escudos */}
+      <div className="flex items-center justify-between px-3 py-3 bg-[#171b23] border-t border-[#2a2e39]">
+        <div className="flex items-center gap-2 min-w-0 max-w-[140px]" title={home.name}>
+          <Image src={home.logo} alt={home.name} width={28} height={28} className="rounded-full bg-white" />
+          <span className="truncate font-semibold">{home.name}</span>
+        </div>
+
+        <div className="flex flex-col items-center min-w-[88px]">
+          <div className="text-2xl font-extrabold leading-none">
+            {match.goals.home} <span className="text-lg font-bold text-[#ffe066]">-</span> {match.goals.away}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 min-w-0 max-w-[140px] justify-end" title={away.name}>
+          <span className="truncate font-semibold text-right">{away.name}</span>
+          <Image src={away.logo} alt={away.name} width={28} height={28} className="rounded-full bg-white" />
+        </div>
+      </div>
+
+      {/* Banda compacta: amarillas | posesión | rojas | canal */}
+      <div className="grid grid-cols-4 gap-2 px-3 py-2 items-center text-[12px] bg-[#171b23] border-t border-[#2a2e39]">
+        <div className="flex items-center justify-center gap-1">
+          <span className="mr-1">🟨</span>
+          <span>{yellowsHome.length}</span>
+          <span className="mx-2 text-white/40">|</span>
+          <span>{yellowsAway.length}</span>
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-white/70">Posesión</span>
+          <span className="font-semibold">{possHome}</span>
+          <span className="text-white/40">/</span>
+          <span className="font-semibold">{possAway}</span>
+        </div>
+        <div className="flex items-center justify-center gap-1">
+          <span className="mr-1">🟥</span>
+          <span>{redsHome.length}</span>
+          <span className="mx-2 text-white/40">|</span>
+          <span>{redsAway.length}</span>
+        </div>
+        <div className="flex items-center justify-end text-white/70">
+          <span className="text-[11px]">Canal:</span>
+          <span className="ml-1 text-[11px] font-semibold">{canal}</span>
+        </div>
+      </div>
+
+      {/* Goleadores */}
+      {(goalsHome.length > 0 || goalsAway.length > 0) && (
+        <div className="grid grid-cols-2 gap-3 px-3 pt-3 pb-1 text-xs">
+          <div className="flex flex-col items-start gap-1">
+            {goalsHome.map((e, i) => (
+              <span key={`gh-${i}`} className="flex items-center gap-1">
+                ⚽ <span className="text-white/90">{e.time.elapsed}&apos;</span> {e.player.name}
+              </span>
+            ))}
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            {goalsAway.map((e, i) => (
+              <span key={`ga-${i}`} className="flex items-center gap-1">
+                {e.player.name} <span className="text-white/90">{e.time.elapsed}&apos;</span> ⚽
+              </span>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Estado y tiempo */}
-      <div className="flex justify-between items-center text-xs text-white/60 mb-2">
-        <span>{isLive ? "Live" : isFinished ? "Finalizado" : ""}</span>
-        <span className="font-semibold text-white">{formatMinute()}</span>
+      {/* VER MAS */}
+      <div className="px-3 py-2 flex items-center justify-between">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="text-[12px] font-semibold text-[#51ff9c]"
+        >
+          {open ? "OCULTAR" : "VER MAS"}
+        </button>
+        {/* espacio para “Escuchá la radio en vivo” si querés sumar un botón */}
       </div>
 
-      {/* Equipos + score */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2 max-w-[110px]" title={home.name}>
-          <span className="truncate">{home.name}</span>
-          <Image src={home.logo} width={20} height={20} alt={home.name} />
-        </div>
-        <div className="text-xl font-bold">{match.goals.home} - {match.goals.away}</div>
-        <div className="flex items-center gap-2 justify-end max-w-[110px]" title={away.name}>
-          <Image src={away.logo} width={20} height={20} alt={away.name} />
-          <span className="truncate text-right">{away.name}</span>
-        </div>
-      </div>
-
-      {/* Tarjetas */}
-      <div className="flex justify-between text-xs text-white/80 mt-2 px-2">
-        <div className="flex gap-2">
-          <span>🟨 {events.yellowHome.length}</span>
-          <span>🟥 {events.redHome.length}</span>
-        </div>
-        <div className="flex gap-2">
-          <span>🟥 {events.redAway.length}</span>
-          <span>🟨 {events.yellowAway.length}</span>
-        </div>
-      </div>
-
-      {/* Goles */}
-      <div className="grid grid-cols-2 gap-4 mt-4 text-xs text-white/90">
-        <div className="flex flex-col items-start">
-          {events.goalsHome.map((e, i) => (
-            <span key={i}>⚽ {e.time.elapsed}' {e.player.name}</span>
-          ))}
-        </div>
-        <div className="flex flex-col items-end">
-          {events.goalsAway.map((e, i) => (
-            <span key={i}>{e.player.name} {e.time.elapsed}' ⚽</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Botón desplegar */}
-      {(hasDetailedStats || hasLineup) && (
-        <div className="mt-4">
-          <button
-            onClick={() => setIsExpanded(prev => !prev)}
-            className="text-xs text-white/60 hover:text-white flex items-center gap-1 mx-auto"
-          >
-            {isExpanded ? "Ocultar" : "Ver más"}
-            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-        </div>
-      )}
-
-      {/* Tabs: Stats / Lineup / Extra */}
-      {isExpanded && (
-        <div className="mt-3 bg-[#2a2a2a] rounded-lg p-2">
-          <div className="flex justify-around text-xs text-white/60 border-b border-gray-600 mb-2">
-            <button onClick={() => setActiveTab("stats")} className={activeTab === "stats" ? "text-white" : ""}>Estadísticas</button>
-            <button onClick={() => setActiveTab("lineup")} className={activeTab === "lineup" ? "text-white" : ""} disabled={!hasLineup && !loading}>Formación</button>
-            <button onClick={() => setActiveTab("extra")} className={activeTab === "extra" ? "text-white" : ""}>Próximamente</button>
+      {/* Dropdown con tabs */}
+      {open && (
+        <div className="px-2 pb-3">
+          {/* tabs */}
+          <div className="flex text-[12px]">
+            <Tab label="MAPA DE JUEGO EN VIVO" active={tab === "map"} onClick={() => setTab("map")} />
+            <Tab label="FORMACIONES" active={tab === "lineup"} onClick={() => setTab("lineup")} />
+            <Tab label="CRONOLOGIA E HISTORIAL" active={tab === "timeline"} onClick={() => setTab("timeline")} />
           </div>
 
-          {/* Stats Tab */}
-          {activeTab === "stats" && hasDetailedStats && (
-            <div className="space-y-2 text-xs text-white/80">
-              {match.statistics?.home.map((stat, i) => {
-                const awayStat = match.statistics?.away[i];
-                const label = STATISTICS_LABELS_ES[stat.type] ?? stat.type;
-                const isBar = ["Ball Possession", "Passes %", "expected_goals"].includes(stat.type);
-
-                const valHome = parseFloat(stat.value?.toString() || "0");
-                const valAway = parseFloat(awayStat?.value?.toString() || "0");
-
-                return (
-                  <div key={i} className="flex flex-col gap-1">
-                    <div className="flex justify-between items-center">
-                      <span className="w-1/3 text-left">{stat.value}</span>
-                      <span className="w-1/3 text-center text-white/60">{label}</span>
-                      <span className="w-1/3 text-right">{awayStat?.value}</span>
-                    </div>
-                    {isBar && (
-                      <div className="flex gap-1 h-2 rounded overflow-hidden bg-gray-700">
-                        <div className="bg-green-500" style={getBarStyle(valHome, valHome + valAway)} />
-                        <div className="bg-blue-500" style={getBarStyle(valAway, valHome + valAway)} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Lineup Tab */}
-          {activeTab === "lineup" && (
-            <div className="text-xs text-white/90 space-y-3">
-              {loading && <p className="text-center text-white/60">Cargando formaciones...</p>}
-              {!loading && hasLineup ? (
-                <>
-                  <div>
-                    <h4 className="text-white/70">{home.name} ({lineups.home?.formation})</h4>
-                    <ul className="list-disc ml-5">
-                      {lineups.home?.startXI?.map((p, idx) => (
-                        <li key={idx}>#{p.player.number} {p.player.name}</li>
-                      ))}
-                    </ul>
-                    {(lineups.home && lineups.home.substitutes?.length > 0) && (
-                      <>
-                        <p className="mt-1 text-white/60">Suplentes:</p>
-                        <ul className="list-disc ml-5">
-                          {lineups.home.substitutes.map((p, idx) => (
-                            <li key={idx}>#{p.player.number} {p.player.name}</li>
-                          ))}
-                        </ul>
-                      </>
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="text-white/70">{away.name} ({lineups.away?.formation})</h4>
-                    <ul className="list-disc ml-5">
-                      {lineups.away?.startXI?.map((p, idx) => (
-                        <li key={idx}>#{p.player.number} {p.player.name}</li>
-                      ))}
-                    </ul>
-                    {lineups.away?.substitutes && lineups.away.substitutes.length > 0 && (
-                      <>
-                        <p className="mt-1 text-white/60">Suplentes:</p>
-                        <ul className="list-disc ml-5">
-                          {lineups.away.substitutes.map((p, idx) => (
-                            <li key={idx}>#{p.player.number} {p.player.name}</li>
-                          ))}
-                        </ul>
-                      </>
-                    )}
-                  </div>
-                </>
-              ) : (
-                !loading && <p className="text-center text-white/60">No hay formación disponible.</p>
-              )}
-            </div>
-          )}
-
-          {/* Extra Tab */}
-          {activeTab === "extra" && (
-            <div className="text-white/50 text-xs text-center">Esta sección estará disponible próximamente.</div>
-          )}
+          {/* contenido */}
+          <div className="bg-[#0f1319] border border-[#2a2e39] rounded-b-xl rounded-tr-xl p-2 mt-[-1px]">
+            {tab === "map" && <LiveMap minute={isLive ? minute : null} />}
+            {tab === "lineup" && (
+              <div className="text-xs text-white/90">
+                <Lineups
+                  fixtureId={match.fixture.id}
+                  homeId={match.teams.home.id}
+                  awayId={match.teams.away.id}
+                />
+              </div>
+            )}
+            {tab === "timeline" && (
+              <Timeline
+                events={[
+                  ...(match.events?.home ?? []).map((e) => ({ ...e, side: "home" as const })),
+                  ...(match.events?.away ?? []).map((e) => ({ ...e, side: "away" as const })),
+                ]}
+              />
+            )}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- subcomponentes UI ---------- */
+
+function Tab({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        "px-3 py-2 border border-[#2a2e39] bg-[#1a1f28] hover:bg-[#202634] transition-colors",
+        active ? "text-white font-semibold border-b-transparent rounded-t-xl" : "text-white/60",
+      ].join(" ")}
+      style={{ marginRight: 2 }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function LiveMap({ minute }: { minute: number | null }) {
+  return (
+    <div className="rounded-lg overflow-hidden border border-[#2a2e39]">
+      <div
+        className="w-full h-[180px] md:h-[220px] bg-[#16331e] relative"
+        style={{
+          backgroundImage:
+            "linear-gradient(#1c3b24 2px, transparent 2px), linear-gradient(90deg, #1c3b24 2px, transparent 2px)",
+          backgroundSize: "100% 33.33%, 25% 100%",
+          backgroundPosition: "0 0, 0 0",
+        }}
+      >
+        <div className="absolute left-3 top-3 text-[11px] bg-[#2a2e39] text-white/80 px-2 py-[2px] rounded">
+          {minute != null ? `${String(minute).padStart(2, "0")}:00` : "—:—"}
+        </div>
+        {/* marcador demo */}
+        <div className="absolute left-3 bottom-6 text-[11px] px-2 py-1 rounded bg-[#0e1a13] border border-[#274e34]">
+          CSM Resita <span className="text-[#66e192] font-semibold]">Saque de arco</span>
+        </div>
+        {/* cono de “heat” demo */}
+        <div className="absolute left-[26px] bottom-[44px] w-0 h-0"
+             style={{ borderLeft: "10px solid transparent", borderRight: "120px solid transparent", borderTop: "80px solid rgba(0,0,0,0.25)" }} />
+      </div>
+    </div>
+  );
+}
+
+// Función para traducir tipos de eventos al español
+function translateEventType(type?: string): string {
+  const translations: Record<string, string> = {
+    'Goal': 'Gol',
+    'Card': 'Tarjeta',
+    'subst': 'Cambio',
+    'Substitution': 'Cambio',
+    'Penalty': 'Penal',
+    'Own Goal': 'Gol en contra',
+    'Miss': 'Fallo',
+    'Red Card': 'Tarjeta roja',
+    'Yellow Card': 'Tarjeta amarilla',
+    'Var': 'VAR',
+    'Goal Kick': 'Saque de arco',
+    'Corner Kick': 'Córner',
+    'Free Kick': 'Tiro libre',
+    'Throw-in': 'Lateral',
+    'Offside': 'Offside',
+    'Foul': 'Falta'
+  };
+  
+  return translations[type || ''] || type || '';
+}
+
+// Función para traducir detalles de eventos al español  
+function translateEventDetail(detail?: string): string {
+  if (!detail) return '';
+  
+  const translations: Record<string, string> = {
+    'Yellow Card': 'Amarilla',
+    'Red Card': 'Roja', 
+    'Second Yellow card': 'Segunda amarilla',
+    'Normal Goal': 'Gol normal',
+    'Penalty': 'Penal',
+    'Own Goal': 'Autogol',
+    'Header': 'Cabezazo',
+    'Left foot': 'Pie izquierdo',
+    'Right foot': 'Pie derecho',
+    'Free kick': 'Tiro libre',
+    'Corner': 'Córner',
+    'Missed Penalty': 'Penal errado'
+  };
+  
+  return translations[detail] || detail;
+}
+
+function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
+  const sorted = useMemo(
+    () => [...events].sort((a, b) => ((a as { time?: { elapsed?: number } })?.time?.elapsed ?? 0) - ((b as { time?: { elapsed?: number } })?.time?.elapsed ?? 0)),
+    [events]
+  );
+  if (!sorted.length) {
+    return <div className="text-center text-white/50 text-xs">Sin eventos disponibles.</div>;
+  }
+  return (
+    <div className="text-xs text-white/75 space-y-2">
+      {sorted.map((e, i) => {
+        const event = e as { time?: { elapsed?: number }; type?: string; detail?: string; player?: { name?: string }; assist?: { name?: string } };
+        const translatedType = translateEventType(event?.type);
+        const translatedDetail = translateEventDetail(event?.detail);
+        
+        return (
+          <div key={i} className="flex items-center justify-between border-b border-white/5 pb-1">
+            <span className="text-white/60">{event?.time?.elapsed ?? "—"}&apos;</span>
+            <span className="mx-2 text-white/80">
+              {translatedType}{translatedDetail ? ` • ${translatedDetail}` : ""}
+            </span>
+            <span className="truncate max-w-[55%] text-right">
+              {event?.player?.name ?? event?.assist?.name ?? "-"}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,34 +1,43 @@
 import { NextResponse } from "next/server";
-import { FootballApiServer } from "@/lib/footballApi"; // asegurate de que esté importado correctamente
-import type { NextRequest } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const fixtureId = searchParams.get("fixture");
-  const homeId = searchParams.get("home");
-  const awayId = searchParams.get("away");
+  const teamId = searchParams.get("team"); // opcional
 
-  if (!fixtureId || !homeId || !awayId) {
-    return NextResponse.json({ error: "Missing params" }, { status: 400 });
+  // Validación de parámetros
+  if (!fixtureId) {
+    return NextResponse.json({ error: "Missing fixture param" }, { status: 400 });
   }
 
-  const apiKey = process.env.API_FOOTBALL_KEY;
+  const apiKey = process.env.FOOTBALL_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "Missing API key" }, { status: 500 });
   }
 
-  const api = new FootballApiServer(apiKey);
+  // Construcción de la query
+  const query = new URLSearchParams({ fixture: fixtureId });
+  if (teamId) query.append("team", teamId);
 
   try {
-    const { home, away } = await api.getMatchLineups({
-      fixture: { id: Number(fixtureId), date: "", status: { short: "", long: "" } },
-      teams: {
-        home: { id: Number(homeId), name: "", logo: "" },
-        away: { id: Number(awayId), name: "", logo: "" },
-      },
-    } as any); // tipo parcial de Match para que compile
+    const response = await fetch(
+      `https://v3.football.api-sports.io/fixtures/lineups?${query.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "x-rapidapi-host": "v3.football.api-sports.io",
+          "x-rapidapi-key": apiKey
+        }
+    });
 
-    return NextResponse.json({ home, away });
+    if (!response.ok) {
+      return NextResponse.json({ error: "Upstream API error" }, { status: response.status });
+    }
+
+    const data = await response.json();
+    // data.response será un array con las alineaciones de cada equipo
+    return NextResponse.json(data.response);
+    console.log("Lineups fetched successfully:", data.response);
   } catch (e) {
     console.error("Lineup API Error:", e);
     return NextResponse.json({ error: "Failed to fetch lineups" }, { status: 500 });
