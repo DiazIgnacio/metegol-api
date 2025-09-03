@@ -10,8 +10,10 @@ import type {
 import { EventsKeys } from "@/types/match";
 
 export class FootballApi {
-  private static baseUrl: string =
-    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  private static baseUrl: string = 
+    typeof window !== "undefined" 
+      ? window.location.origin 
+      : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
   static async getMatches(date?: string, league?: number): Promise<Match[]> {
     const params = new URLSearchParams();
@@ -188,6 +190,23 @@ export class FootballApiServer {
       league: 128,
     });
     return match ?? [];
+  }
+
+  async getTeamAllMatches(teamId: number, season: number): Promise<Match[]> {
+    try {
+      // Get matches from all leagues, not just Liga Profesional
+      const matches = await this.request<Match[]>("/fixtures", {
+        team: teamId,
+        season,
+        last: 50, // Get last 50 matches to show more data
+      });
+      
+      return (matches ?? [])
+        .sort((a, b) => new Date(b.fixture.date).getTime() - new Date(a.fixture.date).getTime());
+    } catch (error) {
+      console.error(`Error fetching all matches for team ${teamId}:`, error);
+      return [];
+    }
   }
 
   async getFixturesByDateAndLeague(

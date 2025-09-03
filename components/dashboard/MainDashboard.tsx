@@ -97,7 +97,7 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
   const leagueLabel =
     selectedLeague !== null
       ? leagueNames[selectedLeague] || `Liga ${selectedLeague}`
-      : "Todas las Ligas";
+      : "";
 
   return (
     <div className="w-full h-full flex flex-col text-white">
@@ -114,7 +114,7 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-4 px-2 mt-4">
+      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-4 px-2 mt-4 mb-1">
         {loading && (
           <div className="text-center py-4 text-white/60">
             Cargando partidos...
@@ -130,9 +130,6 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
         {!loading && filtered.length > 0 && (
           selectedLeague === null ? (
             <div className="space-y-4">
-              <h2 className="text-lg font-bold text-white/90 px-1 mb-4">
-                {leagueLabel}
-              </h2>
               {Object.entries(grouped).map(([leagueId, ms]) => (
                 <LeagueSection
                   key={leagueId}
@@ -145,9 +142,6 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
             </div>
           ) : (
             <div className="space-y-4">
-              <h2 className="text-lg font-bold text-white/90 px-1 mb-4">
-                {leagueLabel}
-              </h2>
               <LeagueSection
                 leagueName={leagueLabel}
                 leagueLogo={filtered[0]?.league?.logo}

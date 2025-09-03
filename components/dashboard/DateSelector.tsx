@@ -17,6 +17,7 @@ interface DateSelectorProps {
   onDateChange: (date: Date) => void;
 }
 
+// ...
 export default function DateSelector({
   selectedDate,
   onDateChange,
@@ -36,6 +37,12 @@ export default function DateSelector({
     { label: "Mañana", date: tomorrow },
   ];
 
+  // helper
+  const formatShort = (d: Date) => format(d, "dd/MM/yyyy");
+
+  // ✅ ¿La fecha seleccionada coincide con alguna quick date?
+  const isQuickSelected = quickDates.some(({ date }) => isSameDay(selectedDate, date));
+
   return (
     <div className="flex items-center px-2 py-1.5 gap-1.5 overflow-x-auto scrollbar-none">
       {quickDates.map(({ label, date }) => {
@@ -46,8 +53,8 @@ export default function DateSelector({
             onClick={() => onDateChange(date)}
             className={`
               flex flex-col items-center justify-center
-              px-2 py-1.5 rounded-lg border text-center whitespace-nowrap text-xs
-              transition-colors flex-1 min-w-0
+              px-1.5 py-1.5 rounded-lg border text-center whitespace-nowrap text-xs
+              transition-colors flex-1 h-12
               ${selected
                 ? "border-lime-500 text-lime-500 font-semibold"
                 : "border-gray-700 text-white/70 hover:bg-[#333]"}
@@ -65,15 +72,23 @@ export default function DateSelector({
         <PopoverTrigger asChild>
           <button
             onClick={() => setOpen((o) => !o)}
+            // ✅ si NO es quick date, marcamos el botón de Calendario
             className={`
-              flex items-center gap-1
-              px-2 py-1.5 rounded-lg border text-xs flex-shrink-0
-              border-gray-700 text-white/70 hover:bg-[#333]
-              transition-colors
+              flex flex-col items-center justify-center gap-1
+              px-2 py-1.5 rounded-lg border text-xs transition-colors flex-1 h-12
+              ${!isQuickSelected
+                ? "border-lime-500 text-lime-500 font-semibold"
+                : "border-gray-700 text-white/70 hover:bg-[#333]"}
             `}
+            aria-pressed={!isQuickSelected}
           >
-            <CalendarIcon className="w-3 h-3 md:w-4 md:h-4" />
-            <span className="text-[10px] md:text-xs">Cal</span>
+            <div className="flex items-center gap-1">
+              <CalendarIcon className="w-3 h-3 md:w-4 md:h-4" />
+              <span className="text-[10px] md:text-xs">Calendario</span>
+            </div>
+            <span className="mt-0.5 text-[9px] md:text-xs leading-tight">
+              {formatShort(selectedDate)}
+            </span>
           </button>
         </PopoverTrigger>
 
@@ -90,7 +105,6 @@ export default function DateSelector({
                 setOpen(false);
               }
             }}
-            initialFocus
             className="bg-transparent text-white"
           />
         </PopoverContent>

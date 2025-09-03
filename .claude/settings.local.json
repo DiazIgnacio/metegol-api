@@ -4,7 +4,8 @@
       "Bash(yarn dev)",
       "Bash(yarn build)",
       "Bash(yarn lint)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

@@ -25,14 +25,14 @@ export default function SimpleMatchCard({ match }: Props) {
 
   const home = match.teams.home;
   const away = match.teams.away;
-  
+
   const isLive = ["1H", "2H", "LIVE", "ET", "P"].includes(match.fixture.status.short);
   const isFinished = match.fixture.status.short === "FT";
   const isUpcoming = match.fixture.status.short === "NS";
-  
+
   // Debug logging for problematic matches
-  if (match.teams.home.name.includes("Kairat") || match.teams.home.name.includes("Celtic") || 
-      match.teams.away.name.includes("Kairat") || match.teams.away.name.includes("Celtic")) {
+  if (match.teams.home.name.includes("Kairat") || match.teams.home.name.includes("Celtic") ||
+    match.teams.away.name.includes("Kairat") || match.teams.away.name.includes("Celtic")) {
     console.log('SIMPLE MATCH DEBUG:', {
       teams: `${match.teams.home.name} vs ${match.teams.away.name}`,
       fixtureId: match.fixture.id,
@@ -54,17 +54,16 @@ export default function SimpleMatchCard({ match }: Props) {
   const redsHome = match.events?.home.filter((e) => e.type === "Card" && e.detail.includes("Red")).length || 0;
   const yellowsAway = match.events?.away.filter((e) => e.type === "Card" && e.detail.includes("Yellow")).length || 0;
   const redsAway = match.events?.away.filter((e) => e.type === "Card" && e.detail.includes("Red")).length || 0;
-  
-  const possHome = getStat(match.statistics?.home, "Ball Possession");
-  const possAway = getStat(match.statistics?.away, "Ball Possession");
-  
+
+
   // Filter out missed penalties from penalty shootout
-  const goalsHome = match.events?.home.filter((e) => 
-    e.type === "Goal" && 
+  const goalsHome = match.events?.home.filter((e) =>
+    e.type === "Goal" &&
     !(e.detail === "Missed Penalty" && e.comments === "Penalty Shootout")
   ) || [];
-  const goalsAway = match.events?.away.filter((e) => 
-    e.type === "Goal" && 
+
+  const goalsAway = match.events?.away.filter((e) =>
+    e.type === "Goal" &&
     !(e.detail === "Missed Penalty" && e.comments === "Penalty Shootout")
   ) || [];
 
@@ -72,54 +71,91 @@ export default function SimpleMatchCard({ match }: Props) {
     if (isLive) {
       const minute = match.fixture.status.elapsed;
       if (minute !== null && minute !== undefined) {
-        return `${minute}mins`;
+        return `${minute}’`;
       }
       return "EN VIVO";
     }
-    if (isUpcoming) return new Date(match.fixture.date).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-    if (isFinished) return "FT";
+
+    if (isUpcoming) {
+      return new Date(match.fixture.date).toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false, // 🔑 Esto fuerza el formato 24hs
+      });
+    }
+
+    if (isFinished) return "";
     return "";
   };
+
+  const allowedLeagues = [
+    "Copa de la Liga Profesional",
+    "Liga Profesional Argentina",
+    "Premier League",
+    "La Liga",
+    "Serie A",
+    "Bundesliga",
+    "Ligue 1",
+  ];
+
+  const leagueName = match.league?.name;
+  const homeShots = getStat(match.statistics?.home, "Total Shots");
+  const awayShots = getStat(match.statistics?.away, "Total Shots");
+
+  const possHome = getStat(match.statistics?.home, "Ball Possession");
+  const possAway = getStat(match.statistics?.away, "Ball Possession");
+
 
   return (
     <div className="bg-[#181c23] rounded-lg border border-[#2a2e39] overflow-hidden">
       {/* Main Match Row - Clickable */}
-      <div 
-        className="flex items-center justify-between p-3 cursor-pointer hover:bg-[#1f2329] transition-colors"
+      <div
+        className="flex items-center justify-between py-2 px-1 cursor-pointer hover:bg-[#1f2329] transition-colors"
         onClick={() => setShowBasicInfo(!showBasicInfo)}
       >
         {/* Time/Status */}
         <div className="w-16 text-center">
-          <span className={`text-sm font-bold ${
-            isLive ? "text-[#00ff7f]" : 
-            isFinished ? "text-white/60" : 
-            "text-[#ffe066]"
-          }`}>
-            {formatTime()}
-          </span>
+          {!isFinished && (
+            <span
+              className={`text-xs font-bold ${isLive ? "text-[#c3cc5a]" : isUpcoming ? "text-white" : "text-white/60"
+                }`}
+            >
+              {formatTime()}
+            </span>
+          )}
         </div>
 
-        {/* Home Team */}
-        <div className="flex items-center justify-center gap-2 flex-1 min-w-0">
-          <Image src={home.logo} alt={home.name} width={24} height={24} className="rounded-full bg-white" />
-          <span className="text-xs font-semibold text-white break-words leading-tight text-center">{home.name}</span>
-        </div>
+        {/* Match Layout: Home Team - Logo - Score - Logo - Away Team */}
+        <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+          <div className="flex items-center justify-center gap-2 w-full">
+            <span className="text-xs font-semibold text-white break-words leading-tight text-right flex-1">{home.name}</span>
+            <Image src={home.logo} alt={home.name} width={24} height={24} className="rounded-full bg-white flex-shrink-0" />
 
-        {/* Score */}
-        <div className="flex items-center gap-2 px-4">
-          <span className="text-lg font-bold text-white">
-            {isUpcoming ? "—" : match.goals.home}
-          </span>
-          <span className="text-lg font-bold text-white/60">—</span>
-          <span className="text-lg font-bold text-white">
-            {isUpcoming ? "—" : match.goals.away}
-          </span>
-        </div>
+            <div className="flex items-center gap-1 px-2">
+              <span className="text-lg font-bold text-white">
+                {isUpcoming ? "—" : match.goals.home}
+              </span>
+              <span className="text-lg font-bold text-white/60">—</span>
+              <span className="text-lg font-bold text-white">
+                {isUpcoming ? "—" : match.goals.away}
+              </span>
+            </div>
 
-        {/* Away Team */}
-        <div className="flex items-center justify-center gap-2 flex-1 min-w-0">
-          <span className="text-xs font-semibold text-white break-words leading-tight text-center">{away.name}</span>
-          <Image src={away.logo} alt={away.name} width={24} height={24} className="rounded-full bg-white" />
+            <Image src={away.logo} alt={away.name} width={24} height={24} className="rounded-full bg-white flex-shrink-0" />
+            <span className="text-xs font-semibold text-white break-words leading-tight text-left flex-1">{away.name}</span>
+          </div>
+          {!isUpcoming &&
+            allowedLeagues.includes(leagueName) &&
+            homeShots !== null &&
+            homeShots !== undefined &&
+            awayShots !== null &&
+            awayShots !== undefined && (
+              <div className="flex items-center text-[10px] text-white/60">
+                <span>({homeShots})</span>
+                <span>—</span>
+                <span>({awayShots})</span>
+              </div>
+            )}
         </div>
 
         {/* Expand Icon */}
@@ -148,11 +184,15 @@ export default function SimpleMatchCard({ match }: Props) {
           </div>
 
           {/* Possession */}
-          <div className="flex items-center gap-2 text-white/80">
-            <span className="font-semibold">{possHome}</span>
-            <span className="text-white/50 text-[10px]">POSESIÓN</span>
-            <span className="font-semibold">{possAway}</span>
-          </div>
+          {
+            (possHome !== "—" && possAway !== "—") && (
+              <div className="flex items-center gap-2 text-white/80">
+                <span className="font-semibold">{possHome}</span>
+                <span className="text-white/50 text-[10px]">POSESIÓN</span>
+                <span className="font-semibold">{possAway}</span>
+              </div>
+            )
+          }
 
           {/* Away Team Cards */}
           <div className="flex items-center gap-2">
@@ -181,7 +221,7 @@ export default function SimpleMatchCard({ match }: Props) {
                   const isPenaltyShootout = goal.detail === "Penalty" && goal.comments === "Penalty Shootout";
                   const timeDisplay = isPenaltyShootout ? "PEN" : `${goal.time.elapsed}mins`;
                   return (
-                    <div key={i} className="flex items-center gap-2 text-white/90">
+                    <div key={i} className="flex items-center text-sm gap-2 text-white/90">
                       <span>{isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}</span>
                       <span>{timeDisplay}</span>
                       <span>{goal.player.name}</span>
@@ -195,7 +235,7 @@ export default function SimpleMatchCard({ match }: Props) {
                   const isPenaltyShootout = goal.detail === "Penalty" && goal.comments === "Penalty Shootout";
                   const timeDisplay = isPenaltyShootout ? "PEN" : `${goal.time.elapsed}mins`;
                   return (
-                    <div key={i} className="flex items-center gap-2 text-white/90">
+                    <div key={i} className="flex items-center text-sm gap-2 text-white/90">
                       <span>{goal.player.name}</span>
                       <span>{timeDisplay}</span>
                       <span>{isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}</span>
@@ -207,7 +247,7 @@ export default function SimpleMatchCard({ match }: Props) {
           )}
 
           {/* Ver Más Button */}
-          <div className="flex justify-center">
+          <div className="flex justify-end mt-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -285,11 +325,10 @@ function Tab({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-        active
-          ? "bg-[#2563eb] text-white"
-          : "bg-[#1a1f28] text-white/60 hover:text-white hover:bg-[#202634]"
-      }`}
+      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${active
+        ? "bg-[#2563eb] text-white"
+        : "bg-[#1a1f28] text-white/60 hover:text-white hover:bg-[#202634]"
+        }`}
     >
       {label}
     </button>
@@ -335,7 +374,7 @@ function translateEventType(type?: string): string {
     'Offside': 'Offside',
     'Foul': 'Falta'
   };
-  
+
   return translations[type || ''] || type || '';
 }
 
@@ -358,16 +397,16 @@ function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
   return (
     <div className="space-y-2 max-h-40 overflow-y-auto">
       {sorted.map((event, i) => {
-        const e = event as { 
-          time?: { elapsed?: number }; 
-          type?: string; 
-          detail?: string; 
-          player?: { name?: string }; 
+        const e = event as {
+          time?: { elapsed?: number };
+          type?: string;
+          detail?: string;
+          player?: { name?: string };
           side?: string;
         };
-        
+
         const translatedType = translateEventType(e?.type);
-        
+
         return (
           <div key={i} className="flex items-center justify-between text-xs space-x-2 text-white/75 py-1 border-b border-white/10">
             <span className="text-white/60 w-8">{e?.time?.elapsed ?? "—"}mins</span>

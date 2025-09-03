@@ -3,6 +3,7 @@
 import Image from "next/image";
 import SimpleMatchCard from "./SimpleMatchCard";
 import type { Match } from "@/types/match";
+import Argentina from "@/public/Argentina.png";
 
 interface Props {
   leagueName: string;
@@ -14,12 +15,23 @@ interface Props {
 export default function LeagueSection({ leagueName, leagueLogo, leagueCountry, matches }: Props) {
   const liveMatches = matches.filter(m => ["1H", "2H", "LIVE", "ET", "P"].includes(m.fixture.status.short));
   const hasLiveMatches = liveMatches.length > 0;
+  
+  const isArgentineLeague = leagueName === "Liga Profesional de Futbol" || leagueName?.includes("Liga Profesional");
 
   return (
     <div className="bg-[#181c23] rounded-xl border border-[#2a2e39] overflow-hidden">
       {/* League Header */}
-      <div className="bg-gradient-to-r from-[#1e3a8a] via-[#2563eb] to-[#1e3a8a] px-4 py-3">
-        <div className="flex items-center justify-between">
+      <div className={`relative px-4 py-3 ${!isArgentineLeague ? "bg-gradient-to-r from-[#1e3a8a] via-[#2563eb] to-[#1e3a8a]" : ""}`}>
+        {isArgentineLeague && (
+          <Image
+            src= {Argentina}
+            alt="Argentina"
+            fill
+            className="object-cover"
+            priority
+          />
+        )}
+        <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {leagueLogo && (
               <Image 
