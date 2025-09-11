@@ -14,28 +14,28 @@ export default function HeaderBar({
   onSearchTermChange,
 }: HeaderBarProps) {
   return (
-    <div className="flex items-center bg-[#1a1a1a] px-4 py-2 rounded-xl shadow-md">
+    <div className="flex items-center rounded-xl bg-[#1a1a1a] px-4 py-2 shadow-md">
       {/* En Vivo dinámico */}
-      <span className="text-green-400 font-semibold text-sm">
+      <span className="text-sm font-semibold text-green-400">
         ● En Vivo<span className="text-white">({liveCount})</span>
       </span>
 
       {/* Buscador */}
-      <div className="flex items-center bg-[#333] px-3 py-1 rounded-full flex-1 mx-3">
-        <SearchIcon className="w-4 h-4 text-white/50 mr-2" />
+      <div className="mx-3 flex flex-1 items-center rounded-full bg-[#333] px-3 py-1">
+        <SearchIcon className="mr-2 h-4 w-4 text-white/50" />
         <input
           type="text"
           placeholder="Buscar Partido"
           value={searchTerm}
-          onChange={(e) => onSearchTermChange(e.target.value)}
-          className="bg-transparent text-sm text-white placeholder:text-white/50 outline-none w-full"
+          onChange={e => onSearchTermChange(e.target.value)}
+          className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
         />
       </div>
 
       {/* Dropdown “Todos” (sigue estático, el cambio de liga lo manejamos con SubNavbar) */}
       <div className="flex items-center gap-1 text-sm text-white/70">
         Todos
-        <ChevronDown className="w-4 h-4" />
+        <ChevronDown className="h-4 w-4" />
       </div>
     </div>
   );

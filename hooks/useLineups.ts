@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import type { LineupTeam } from "@/types/match";
 
 export function useLineups(fixtureId: number, homeId: number, awayId: number) {
-  const [lineups, setLineups] = useState<{ home: LineupTeam | null; away: LineupTeam | null }>({
-    home: null,
-    away: null,
-  });
+  const [lineups, setLineups] = useState<LineupTeam[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,11 +10,14 @@ export function useLineups(fixtureId: number, homeId: number, awayId: number) {
 
     async function fetchLineups() {
       try {
-        const res = await fetch(`/api/lineups?fixture=${fixtureId}&home=${homeId}&away=${awayId}`);
+        const res = await fetch(
+          `/api/lineups?fixture=${fixtureId}&home=${homeId}&away=${awayId}`
+        );
         const data = await res.json();
-        setLineups(data);
+        setLineups(Array.isArray(data) ? data : []);
       } catch (e) {
         console.error("Error fetching lineups:", e);
+        setLineups([]);
       } finally {
         setLoading(false);
       }

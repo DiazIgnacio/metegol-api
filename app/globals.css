@@ -121,7 +121,7 @@
 }
 
 body {
-  background-image: url('/Background.png');
+  background-image: url("/Background.png");
   background-size: cover;
   background-repeat: repeat;
   background-attachment: fixed;
@@ -130,9 +130,9 @@ body {
 
 /* Hide scrollbar */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* Internet Explorer 10+ */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Safari and Chrome */
+  display: none; /* Safari and Chrome */
 }

@@ -3,14 +3,15 @@
 import Image from "next/image";
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import type { Match } from "@/types/match";
+import type { Match, LineupTeam } from "@/types/match";
 import { Lineups } from "@/components/Lineups";
+import { useLineups } from "@/hooks/useLineups";
 
 const getStat = (
   stats: { type: string; value: string | number | null }[] | undefined,
   type: string
 ) => {
-  const f = stats?.find((s) => s.type === type);
+  const f = stats?.find(s => s.type === type);
   return f?.value ?? "—";
 };
 
@@ -21,19 +22,27 @@ interface Props {
 export default function SimpleMatchCard({ match }: Props) {
   const [showBasicInfo, setShowBasicInfo] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [activeTab, setActiveTab] = useState<"map" | "lineup" | "timeline">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "lineup" | "timeline">(
+    "map"
+  );
 
   const home = match.teams.home;
   const away = match.teams.away;
 
-  const isLive = ["1H", "2H", "LIVE", "ET", "P"].includes(match.fixture.status.short);
+  const isLive = ["1H", "2H", "LIVE", "ET", "P"].includes(
+    match.fixture.status.short
+  );
   const isFinished = match.fixture.status.short === "FT";
   const isUpcoming = match.fixture.status.short === "NS";
 
   // Debug logging for problematic matches
-  if (match.teams.home.name.includes("Kairat") || match.teams.home.name.includes("Celtic") ||
-    match.teams.away.name.includes("Kairat") || match.teams.away.name.includes("Celtic")) {
-    console.log('SIMPLE MATCH DEBUG:', {
+  if (
+    match.teams.home.name.includes("Kairat") ||
+    match.teams.home.name.includes("Celtic") ||
+    match.teams.away.name.includes("Kairat") ||
+    match.teams.away.name.includes("Celtic")
+  ) {
+    console.log("SIMPLE MATCH DEBUG:", {
       teams: `${match.teams.home.name} vs ${match.teams.away.name}`,
       fixtureId: match.fixture.id,
       status: match.fixture.status.short,
@@ -45,27 +54,42 @@ export default function SimpleMatchCard({ match }: Props) {
       homeEvents: match.events?.home.length || 0,
       awayEvents: match.events?.away.length || 0,
       homeGoals: match.events?.home.filter(e => e.type === "Goal") || [],
-      awayGoals: match.events?.away.filter(e => e.type === "Goal") || []
+      awayGoals: match.events?.away.filter(e => e.type === "Goal") || [],
     });
   }
 
   // Stats for basic info
-  const yellowsHome = match.events?.home.filter((e) => e.type === "Card" && e.detail.includes("Yellow")).length || 0;
-  const redsHome = match.events?.home.filter((e) => e.type === "Card" && e.detail.includes("Red")).length || 0;
-  const yellowsAway = match.events?.away.filter((e) => e.type === "Card" && e.detail.includes("Yellow")).length || 0;
-  const redsAway = match.events?.away.filter((e) => e.type === "Card" && e.detail.includes("Red")).length || 0;
-
+  const yellowsHome =
+    match.events?.home.filter(
+      e => e.type === "Card" && e.detail.includes("Yellow")
+    ).length || 0;
+  const redsHome =
+    match.events?.home.filter(
+      e => e.type === "Card" && e.detail.includes("Red")
+    ).length || 0;
+  const yellowsAway =
+    match.events?.away.filter(
+      e => e.type === "Card" && e.detail.includes("Yellow")
+    ).length || 0;
+  const redsAway =
+    match.events?.away.filter(
+      e => e.type === "Card" && e.detail.includes("Red")
+    ).length || 0;
 
   // Filter out missed penalties from penalty shootout
-  const goalsHome = match.events?.home.filter((e) =>
-    e.type === "Goal" &&
-    !(e.detail === "Missed Penalty" && e.comments === "Penalty Shootout")
-  ) || [];
+  const goalsHome =
+    match.events?.home.filter(
+      e =>
+        e.type === "Goal" &&
+        !(e.detail === "Missed Penalty" && e.comments === "Penalty Shootout")
+    ) || [];
 
-  const goalsAway = match.events?.away.filter((e) =>
-    e.type === "Goal" &&
-    !(e.detail === "Missed Penalty" && e.comments === "Penalty Shootout")
-  ) || [];
+  const goalsAway =
+    match.events?.away.filter(
+      e =>
+        e.type === "Goal" &&
+        !(e.detail === "Missed Penalty" && e.comments === "Penalty Shootout")
+    ) || [];
 
   const formatTime = () => {
     if (isLive) {
@@ -105,20 +129,24 @@ export default function SimpleMatchCard({ match }: Props) {
   const possHome = getStat(match.statistics?.home, "Ball Possession");
   const possAway = getStat(match.statistics?.away, "Ball Possession");
 
-
   return (
-    <div className="bg-[#181c23] rounded-lg border border-[#2a2e39] overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-[#2a2e39] bg-[#181c23]">
       {/* Main Match Row - Clickable */}
       <div
-        className="flex items-center justify-between py-2 px-1 cursor-pointer hover:bg-[#1f2329] transition-colors"
+        className="flex cursor-pointer items-center justify-between px-1 py-2 transition-colors hover:bg-[#1f2329]"
         onClick={() => setShowBasicInfo(!showBasicInfo)}
       >
         {/* Time/Status */}
         <div className="w-16 text-center">
           {!isFinished && (
             <span
-              className={`text-xs font-bold ${isLive ? "text-[#c3cc5a]" : isUpcoming ? "text-white" : "text-white/60"
-                }`}
+              className={`text-xs font-bold ${
+                isLive
+                  ? "text-[#c3cc5a]"
+                  : isUpcoming
+                    ? "text-white"
+                    : "text-white/60"
+              }`}
             >
               {formatTime()}
             </span>
@@ -126,10 +154,18 @@ export default function SimpleMatchCard({ match }: Props) {
         </div>
 
         {/* Match Layout: Home Team - Logo - Score - Logo - Away Team */}
-        <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
-          <div className="flex items-center justify-center gap-2 w-full">
-            <span className="text-xs font-semibold text-white break-words leading-tight text-right flex-1">{home.name}</span>
-            <Image src={home.logo} alt={home.name} width={24} height={24} className="rounded-full bg-white flex-shrink-0" />
+        <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
+          <div className="flex w-full items-center justify-center gap-2">
+            <span className="flex-1 text-right text-xs leading-tight font-semibold break-words text-white">
+              {home.name}
+            </span>
+            <Image
+              src={home.logo}
+              alt={home.name}
+              width={24}
+              height={24}
+              className="flex-shrink-0 rounded-full bg-white"
+            />
 
             <div className="flex items-center gap-1 px-2">
               <span className="text-lg font-bold text-white">
@@ -141,8 +177,16 @@ export default function SimpleMatchCard({ match }: Props) {
               </span>
             </div>
 
-            <Image src={away.logo} alt={away.name} width={24} height={24} className="rounded-full bg-white flex-shrink-0" />
-            <span className="text-xs font-semibold text-white break-words leading-tight text-left flex-1">{away.name}</span>
+            <Image
+              src={away.logo}
+              alt={away.name}
+              width={24}
+              height={24}
+              className="flex-shrink-0 rounded-full bg-white"
+            />
+            <span className="flex-1 text-left text-xs leading-tight font-semibold break-words text-white">
+              {away.name}
+            </span>
           </div>
           {!isUpcoming &&
             allowedLeagues.includes(leagueName) &&
@@ -159,7 +203,7 @@ export default function SimpleMatchCard({ match }: Props) {
         </div>
 
         {/* Expand Icon */}
-        <div className="w-8 flex justify-center">
+        <div className="flex w-8 justify-center">
           {showBasicInfo ? (
             <ChevronUp size={16} className="text-white/60" />
           ) : (
@@ -170,7 +214,7 @@ export default function SimpleMatchCard({ match }: Props) {
 
       {/* Cards and Possession Row - Always visible when match has started */}
       {!isUpcoming && (
-        <div className="flex items-center justify-between px-3 py-2 bg-[#0f1419] border-t border-[#2a2e39] text-xs">
+        <div className="flex items-center justify-between border-t border-[#2a2e39] bg-[#0f1419] px-3 py-2 text-xs">
           {/* Home Team Cards */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
@@ -184,15 +228,13 @@ export default function SimpleMatchCard({ match }: Props) {
           </div>
 
           {/* Possession */}
-          {
-            (possHome !== "—" && possAway !== "—") && (
-              <div className="flex items-center gap-2 text-white/80">
-                <span className="font-semibold">{possHome}</span>
-                <span className="text-white/50 text-[10px]">POSESIÓN</span>
-                <span className="font-semibold">{possAway}</span>
-              </div>
-            )
-          }
+          {possHome !== "—" && possAway !== "—" && (
+            <div className="flex items-center gap-2 text-white/80">
+              <span className="font-semibold">{possHome}</span>
+              <span className="text-[10px] text-white/50">POSESIÓN</span>
+              <span className="font-semibold">{possAway}</span>
+            </div>
+          )}
 
           {/* Away Team Cards */}
           <div className="flex items-center gap-2">
@@ -209,36 +251,59 @@ export default function SimpleMatchCard({ match }: Props) {
       )}
 
       {/* Basic Info Section */}
-      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showBasicInfo ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="px-3 pb-3 bg-[#0f1419] border-t border-[#2a2e39]">
-
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${showBasicInfo ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
+      >
+        <div className="border-t border-[#2a2e39] bg-[#0f1419] px-3 pb-3">
           {/* Goals */}
           {(goalsHome.length > 0 || goalsAway.length > 0) && (
-            <div className="grid grid-cols-2 mt-2 gap-3 mb-3 text-xs">
+            <div className="mt-2 mb-3 grid grid-cols-2 gap-3 text-xs">
               <div className="flex flex-col gap-1">
                 {goalsHome.map((goal, i) => {
-                  const isPenalty = goal.detail === "Penalty" && goal.comments !== "Penalty Shootout";
-                  const isPenaltyShootout = goal.detail === "Penalty" && goal.comments === "Penalty Shootout";
-                  const timeDisplay = isPenaltyShootout ? "PEN" : `${goal.time.elapsed}mins`;
+                  const isPenalty =
+                    goal.detail === "Penalty" &&
+                    goal.comments !== "Penalty Shootout";
+                  const isPenaltyShootout =
+                    goal.detail === "Penalty" &&
+                    goal.comments === "Penalty Shootout";
+                  const timeDisplay = isPenaltyShootout
+                    ? "PEN"
+                    : `${goal.time.elapsed}mins`;
                   return (
-                    <div key={i} className="flex items-center text-sm gap-2 text-white/90">
-                      <span>{isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}</span>
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 text-sm text-white/90"
+                    >
+                      <span>
+                        {isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}
+                      </span>
                       <span>{timeDisplay}</span>
                       <span>{goal.player.name}</span>
                     </div>
                   );
                 })}
               </div>
-              <div className="flex flex-col gap-1 items-end">
+              <div className="flex flex-col items-end gap-1">
                 {goalsAway.map((goal, i) => {
-                  const isPenalty = goal.detail === "Penalty" && goal.comments !== "Penalty Shootout";
-                  const isPenaltyShootout = goal.detail === "Penalty" && goal.comments === "Penalty Shootout";
-                  const timeDisplay = isPenaltyShootout ? "PEN" : `${goal.time.elapsed}mins`;
+                  const isPenalty =
+                    goal.detail === "Penalty" &&
+                    goal.comments !== "Penalty Shootout";
+                  const isPenaltyShootout =
+                    goal.detail === "Penalty" &&
+                    goal.comments === "Penalty Shootout";
+                  const timeDisplay = isPenaltyShootout
+                    ? "PEN"
+                    : `${goal.time.elapsed}mins`;
                   return (
-                    <div key={i} className="flex items-center text-sm gap-2 text-white/90">
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 text-sm text-white/90"
+                    >
                       <span>{goal.player.name}</span>
                       <span>{timeDisplay}</span>
-                      <span>{isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}</span>
+                      <span>
+                        {isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}
+                      </span>
                     </div>
                   );
                 })}
@@ -247,13 +312,13 @@ export default function SimpleMatchCard({ match }: Props) {
           )}
 
           {/* Ver Más Button */}
-          <div className="flex justify-end mt-2">
+          <div className="mt-2 flex justify-end">
             <button
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 setShowAdvanced(!showAdvanced);
               }}
-              className="text-xs font-semibold text-[#51ff9c] hover:text-[#66ff99] transition-colors"
+              className="text-xs font-semibold text-[#51ff9c] transition-colors hover:text-[#66ff99]"
             >
               {showAdvanced ? "OCULTAR DETALLES" : "VER MÁS"}
             </button>
@@ -262,10 +327,12 @@ export default function SimpleMatchCard({ match }: Props) {
       </div>
 
       {/* Advanced Section with Tabs */}
-      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showBasicInfo && showAdvanced ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="px-3 pb-3 bg-[#0a0e13] border-t border-[#2a2e39]">
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${showBasicInfo && showAdvanced ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
+      >
+        <div className="border-t border-[#2a2e39] bg-[#0a0e13] px-3 pb-3">
           {/* Tabs */}
-          <div className="flex text-xs mb-3 gap-1">
+          <div className="mb-3 flex gap-1 text-xs">
             <Tab
               label="MAPA"
               active={activeTab === "map"}
@@ -284,9 +351,14 @@ export default function SimpleMatchCard({ match }: Props) {
           </div>
 
           {/* Tab Content */}
-          <div className="bg-[#0f1319] border border-[#2a2e39] rounded-lg p-3">
+          <div className="rounded-lg border border-[#2a2e39] bg-[#0f1319] p-3">
             {activeTab === "map" && (
-              <LiveMap minute={isLive ? (match.fixture.status.elapsed ?? null) : null} />
+              <LiveMap
+                minute={isLive ? (match.fixture.status.elapsed ?? null) : null}
+                fixtureId={match.fixture.id}
+                homeId={match.teams.home.id}
+                awayId={match.teams.away.id}
+              />
             )}
             {activeTab === "lineup" && (
               <div className="text-xs text-white/90">
@@ -300,8 +372,14 @@ export default function SimpleMatchCard({ match }: Props) {
             {activeTab === "timeline" && (
               <Timeline
                 events={[
-                  ...(match.events?.home ?? []).map((e) => ({ ...e, side: "home" as const })),
-                  ...(match.events?.away ?? []).map((e) => ({ ...e, side: "away" as const })),
+                  ...(match.events?.home ?? []).map(e => ({
+                    ...e,
+                    side: "home" as const,
+                  })),
+                  ...(match.events?.away ?? []).map(e => ({
+                    ...e,
+                    side: "away" as const,
+                  })),
                 ]}
               />
             )}
@@ -325,29 +403,169 @@ function Tab({
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${active
-        ? "bg-[#2563eb] text-white"
-        : "bg-[#1a1f28] text-white/60 hover:text-white hover:bg-[#202634]"
-        }`}
+      className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+        active
+          ? "bg-[#2563eb] text-white"
+          : "bg-[#1a1f28] text-white/60 hover:bg-[#202634] hover:text-white"
+      }`}
     >
       {label}
     </button>
   );
 }
 
-function LiveMap({ minute }: { minute: number | null }) {
+const FieldPlayers: React.FC<{
+  players: {
+    player: {
+      id: number;
+      name: string;
+      number: number;
+      pos: string;
+      grid: string;
+    };
+  }[];
+  colors?: LineupTeam["team"]["colors"];
+  side: "home" | "away";
+}> = ({ players, colors, side }) => {
+  // Group players by row and sort them
+  const playersByRow = players
+    .filter(p => p.player.grid)
+    .reduce(
+      (acc, p) => {
+        const [row] = p.player.grid.split(":").map(Number);
+        if (!acc[row]) acc[row] = [];
+        acc[row].push(p);
+        return acc;
+      },
+      {} as Record<number, typeof players>
+    );
+
+  // Sort rows and columns properly
+  Object.keys(playersByRow).forEach(rowKey => {
+    const row = Number(rowKey);
+    playersByRow[row] = playersByRow[row].sort((a, b) => {
+      const [, aCol] = a.player.grid.split(":").map(Number);
+      const [, bCol] = b.player.grid.split(":").map(Number);
+      return aCol - bCol;
+    });
+  });
+
+  const sortedRows = Object.keys(playersByRow)
+    .map(Number)
+    .sort((a, b) => {
+      // Reverse for home team so goalkeeper is at the border
+      return side === "home" ? b - a : a - b;
+    });
+
   return (
-    <div className="h-32 bg-[#16331e] rounded-lg flex items-center justify-center relative overflow-hidden">
-      <div className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: "linear-gradient(#1c3b24 1px, transparent 1px), linear-gradient(90deg, #1c3b24 1px, transparent 1px)",
-          backgroundSize: "20px 20px"
-        }}>
+    <div className={"absolute inset-0 flex flex-row-reverse"}>
+      {sortedRows.map(row => (
+        <div
+          key={row}
+          className="flex flex-1 flex-col items-center justify-around py-2"
+        >
+          {playersByRow[row].map(p => (
+            <div key={p.player.id} className="group relative cursor-pointer">
+              <div
+                className="relative flex h-5 w-5 items-center justify-center rounded-full border text-xs font-bold"
+                style={{
+                  backgroundColor:
+                    p.player.pos === "G"
+                      ? `#${colors?.goalkeeper.primary}`
+                      : `#${colors?.player.primary}`,
+                  color:
+                    p.player.pos === "G"
+                      ? `#${colors?.goalkeeper.number}`
+                      : `#${colors?.player.number}`,
+                  borderColor:
+                    p.player.pos === "G"
+                      ? `#${colors?.goalkeeper.border}`
+                      : `#${colors?.player.border}`,
+                }}
+              >
+                {p.player.number}
+              </div>
+
+              {/* Player name tooltip */}
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 transform rounded bg-black/90 px-1 py-0.5 text-xs whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100">
+                {p.player.name.split(" ").slice(-1)[0]}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+function LiveMap({
+  minute,
+  fixtureId,
+  homeId,
+  awayId,
+}: {
+  minute: number | null;
+  fixtureId: number;
+  homeId: number;
+  awayId: number;
+}) {
+  const { lineups, loading } = useLineups(fixtureId, homeId, awayId);
+
+  if (loading) {
+    return (
+      <div className="relative flex h-32 items-center justify-center overflow-hidden rounded-lg bg-[#16331e]">
+        <div className="z-10 text-center text-xs text-white/70">
+          Cargando formaciones...
+        </div>
       </div>
-      <div className="text-xs text-white/70 text-center z-10">
-        <div className="mb-1">Mapa de juego en vivo</div>
-        <div className="text-[#66e192] font-semibold">
-          {minute ? `${minute}mins` : "Partido no iniciado"}
+    );
+  }
+
+  const homeTeam = lineups?.[0];
+  const awayTeam = lineups?.[1];
+
+  return (
+    <div className="relative h-40 overflow-hidden rounded-lg bg-[#16331e]">
+      {/* Field markings */}
+      <div className="absolute inset-2 rounded border border-white/30">
+        {/* Center line */}
+        <div className="absolute top-0 left-1/2 h-full w-0.5 -translate-x-0.5 transform bg-white/30"></div>
+        {/* Center circle */}
+        <div className="absolute top-1/2 left-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 transform rounded-full border border-white/30"></div>
+        {/* Goal areas */}
+        <div className="absolute top-1/3 left-0 h-1/3 w-3 border border-l-0 border-white/30"></div>
+        <div className="absolute top-1/3 right-0 h-1/3 w-3 border border-r-0 border-white/30"></div>
+      </div>
+
+      {/* Players */}
+      <div className="absolute inset-2 flex">
+        {/* Home team (right half) */}
+        <div className="relative flex-1">
+          {homeTeam?.startXI && (
+            <FieldPlayers
+              players={homeTeam.startXI}
+              colors={homeTeam.team.colors}
+              side="home"
+            />
+          )}
+        </div>
+
+        {/* Away team (left half) */}
+        <div className="relative flex-1">
+          {awayTeam?.startXI && (
+            <FieldPlayers
+              players={awayTeam.startXI}
+              colors={awayTeam.team.colors}
+              side="away"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Match status */}
+      <div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2 transform text-center text-xs text-white/70">
+        <div className="font-semibold text-[#66e192]">
+          {minute ? `${minute}mins` : "Formación inicial"}
         </div>
       </div>
     </div>
@@ -357,32 +575,31 @@ function LiveMap({ minute }: { minute: number | null }) {
 // Función para traducir tipos de eventos al español
 function translateEventType(type?: string): string {
   const translations: Record<string, string> = {
-    'Goal': 'Gol',
-    'Card': 'Tarjeta',
-    'subst': 'Cambio',
-    'Substitution': 'Cambio',
-    'Penalty': 'Penal',
-    'Own Goal': 'Gol en contra',
-    'Miss': 'Fallo',
-    'Red Card': 'Tarjeta roja',
-    'Yellow Card': 'Tarjeta amarilla',
-    'Var': 'VAR',
-    'Goal Kick': 'Saque de arco',
-    'Corner Kick': 'Córner',
-    'Free Kick': 'Tiro libre',
-    'Throw-in': 'Lateral',
-    'Offside': 'Offside',
-    'Foul': 'Falta'
+    Goal: "Gol",
+    Card: "Tarjeta",
+    subst: "Cambio",
+    Substitution: "Cambio",
+    Penalty: "Penal",
+    "Own Goal": "Gol en contra",
+    Miss: "Fallo",
+    "Red Card": "Tarjeta roja",
+    "Yellow Card": "Tarjeta amarilla",
+    Var: "VAR",
+    "Goal Kick": "Saque de arco",
+    "Corner Kick": "Córner",
+    "Free Kick": "Tiro libre",
+    "Throw-in": "Lateral",
+    Offside: "Offside",
+    Foul: "Falta",
   };
 
-  return translations[type || ''] || type || '';
+  return translations[type || ""] || type || "";
 }
-
 
 function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
   if (!events.length) {
     return (
-      <div className="text-center text-white/50 text-xs py-4">
+      <div className="py-4 text-center text-xs text-white/50">
         Sin eventos disponibles
       </div>
     );
@@ -395,7 +612,7 @@ function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
   });
 
   return (
-    <div className="space-y-2 max-h-40 overflow-y-auto">
+    <div className="max-h-40 space-y-2 overflow-y-auto">
       {sorted.map((event, i) => {
         const e = event as {
           time?: { elapsed?: number };
@@ -408,12 +625,15 @@ function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
         const translatedType = translateEventType(e?.type);
 
         return (
-          <div key={i} className="flex items-center justify-between text-xs space-x-2 text-white/75 py-1 border-b border-white/10">
-            <span className="text-white/60 w-8">{e?.time?.elapsed ?? "—"}mins</span>
-            <span className="flex-1 mx-2">
-              | {translatedType}
+          <div
+            key={i}
+            className="flex items-center justify-between space-x-2 border-b border-white/10 py-1 text-xs text-white/75"
+          >
+            <span className="w-8 text-white/60">
+              {e?.time?.elapsed ?? "—"}mins
             </span>
-            <span className="text-right text-white/80 truncate max-w-[100px]">
+            <span className="mx-2 flex-1">| {translatedType}</span>
+            <span className="max-w-[100px] truncate text-right text-white/80">
               {e?.player?.name ?? "—"}
             </span>
           </div>

@@ -8,21 +8,21 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const season = parseInt(searchParams.get("season") || "2025");
-    
+
     // Get all teams from Liga Profesional (league ID: 128)
     const allTeams = await footballApi.getTeams(season);
-    
+
     // If search parameter exists, filter teams by name
     let teams = allTeams;
     if (search) {
       const searchTerm = search.toLowerCase();
-      teams = allTeams.filter(team => 
+      teams = allTeams.filter(team =>
         team.name.toLowerCase().includes(searchTerm)
       );
     }
 
-    return NextResponse.json({ 
-      teams: teams.slice(0, 10) // Limit to 10 results for dropdown
+    return NextResponse.json({
+      teams: teams.slice(0, 10), // Limit to 10 results for dropdown
     });
   } catch (error) {
     console.error("Error fetching teams:", error);

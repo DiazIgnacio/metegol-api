@@ -12,10 +12,10 @@ interface SearchDropdownProps {
   autoFocus?: boolean;
 }
 
-export default function SearchDropdown({ 
-  className = "", 
+export default function SearchDropdown({
+  className = "",
   onClose,
-  autoFocus = false 
+  autoFocus = false,
 }: SearchDropdownProps) {
   const [query, setQuery] = useState("");
   const [teams, setTeams] = useState<Team[]>([]);
@@ -36,7 +36,10 @@ export default function SearchDropdown({
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
         if (onClose && !query) {
           onClose();
@@ -104,28 +107,28 @@ export default function SearchDropdown({
         {onClose && (
           <button
             onClick={handleClose}
-            className="mr-3 p-1 hover:bg-gray-800 rounded-lg transition-colors"
+            className="mr-3 rounded-lg p-1 transition-colors hover:bg-gray-800"
           >
-            <ArrowLeft className="w-5 h-5 text-white" />
+            <ArrowLeft className="h-5 w-5 text-white" />
           </button>
         )}
-        
+
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
           <input
             ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={e => setQuery(e.target.value)}
             placeholder="Buscar equipos..."
-            className="w-full pl-10 pr-10 py-2 bg-gray-800 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
+            className="w-full rounded-lg border border-gray-600 bg-gray-800 py-2 pr-10 pl-10 text-white placeholder-gray-400 focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
           {query && (
             <button
               onClick={clearSearch}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+              className="absolute top-1/2 right-3 -translate-y-1/2 transform text-gray-400 hover:text-gray-300"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -133,33 +136,33 @@ export default function SearchDropdown({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+        <div className="absolute top-full right-0 left-0 z-50 mt-2 max-h-64 overflow-y-auto rounded-lg border border-gray-600 bg-gray-800 shadow-lg">
           {isLoading ? (
             <div className="p-4 text-center text-gray-400">
               Buscando equipos...
             </div>
           ) : teams.length > 0 ? (
-            teams.map((team) => (
+            teams.map(team => (
               <button
                 key={team.id}
                 onClick={() => handleTeamSelect(team)}
                 disabled={navigating === team.id}
-                className="w-full p-3 text-left hover:bg-gray-700 flex items-center space-x-3 border-b border-gray-700 last:border-b-0 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex w-full items-center space-x-3 border-b border-gray-700 p-3 text-left transition-colors last:border-b-0 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Image
                   src={team.logo}
                   alt={team.name}
                   width={24}
                   height={24}
-                  className="w-6 h-6 object-contain flex-shrink-0"
+                  className="h-6 w-6 flex-shrink-0 object-contain"
                 />
-                <div className="flex items-center justify-between w-full">
-                  <span className="text-sm font-medium text-white truncate">
+                <div className="flex w-full items-center justify-between">
+                  <span className="truncate text-sm font-medium text-white">
                     {team.name}
                   </span>
                   {navigating === team.id && (
                     <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
                       <span className="text-xs text-gray-400">Cargando...</span>
                     </div>
                   )}

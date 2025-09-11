@@ -32,7 +32,11 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const fetchMatches = async (date: Date, leagueId: number | null, country: string | null) => {
+  const fetchMatches = async (
+    date: Date,
+    leagueId: number | null,
+    country: string | null
+  ) => {
     setLoading(true);
     try {
       const dateStr = format(date, "yyyy-MM-dd");
@@ -45,7 +49,10 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
         // 2) Todas las ligas del país seleccionado
         const leagues = await FootballApi.getLeaguesByCountry(country);
         const leagueIds = leagues
-          .map((l: { id?: number; league?: { id: number } }) => (l?.id ?? l?.league?.id))
+          .map(
+            (l: { id?: number; league?: { id: number } }) =>
+              l?.id ?? l?.league?.id
+          )
           .filter((id: unknown): id is number => typeof id === "number");
 
         const chunks = await Promise.all(
@@ -56,7 +63,10 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
         newMatches = chunks.flat();
       } else {
         // 3) Set por defecto (todas)
-        newMatches = await FootballApi.getMultipleLeaguesMatches(dateStr, DEFAULT_LEAGUES);
+        newMatches = await FootballApi.getMultipleLeaguesMatches(
+          dateStr,
+          DEFAULT_LEAGUES
+        );
       }
 
       setMatches(newMatches);
@@ -74,14 +84,18 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
 
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return matches.filter((m) =>
-      m.teams.home.name.toLowerCase().includes(term) ||
-      m.teams.away.name.toLowerCase().includes(term)
+    return matches.filter(
+      m =>
+        m.teams.home.name.toLowerCase().includes(term) ||
+        m.teams.away.name.toLowerCase().includes(term)
     );
   }, [matches, searchTerm]);
 
   const liveCount = useMemo(
-    () => filtered.filter((m) => ["1H", "2H", "LIVE", "ET", "P"].includes(m.fixture.status.short)).length,
+    () =>
+      filtered.filter(m =>
+        ["1H", "2H", "LIVE", "ET", "P"].includes(m.fixture.status.short)
+      ).length,
     [filtered]
   );
 
@@ -100,7 +114,7 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
       : "";
 
   return (
-    <div className="w-full h-full flex flex-col text-white">
+    <div className="flex h-full w-full flex-col text-white">
       <div className="flex-shrink-0">
         <HeaderBar
           liveCount={liveCount}
@@ -114,26 +128,31 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-4 px-2 mt-4 mb-1">
+      <div className="scrollbar-hide mt-4 mb-1 flex-1 space-y-4 overflow-y-auto px-2">
         {loading && (
-          <div className="text-center py-4 text-white/60">
+          <div className="py-4 text-center text-white/60">
             Cargando partidos...
           </div>
         )}
 
         {!loading && filtered.length === 0 && (
-          <div className="text-center py-8 text-white/60">
+          <div className="py-8 text-center text-white/60">
             No hay partidos que coincidan con tu búsqueda.
           </div>
         )}
 
-        {!loading && filtered.length > 0 && (
-          selectedLeague === null ? (
+        {!loading &&
+          filtered.length > 0 &&
+          (selectedLeague === null ? (
             <div className="space-y-4">
               {Object.entries(grouped).map(([leagueId, ms]) => (
                 <LeagueSection
                   key={leagueId}
-                  leagueName={ms[0]?.league?.name || leagueNames[+leagueId] || `Liga ${leagueId}`}
+                  leagueName={
+                    ms[0]?.league?.name ||
+                    leagueNames[+leagueId] ||
+                    `Liga ${leagueId}`
+                  }
                   leagueLogo={ms[0]?.league?.logo}
                   leagueCountry={ms[0]?.league?.country}
                   matches={ms}
@@ -149,15 +168,14 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
                 matches={filtered}
               />
             </div>
-          )
-        )}
+          ))}
       </div>
-      
+
       {/* Fixed bottom navigation */}
       <div className="flex-shrink-0 px-2 pb-2">
         <SubNavbar
           selectedLeague={selectedLeague}
-          onLeagueChange={(id) => {
+          onLeagueChange={id => {
             setSelectedLeague(id);
           }}
         />

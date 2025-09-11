@@ -10,9 +10,9 @@ import type {
 import { EventsKeys } from "@/types/match";
 
 export class FootballApi {
-  private static baseUrl: string = 
-    typeof window !== "undefined" 
-      ? window.location.origin 
+  private static baseUrl: string =
+    typeof window !== "undefined"
+      ? window.location.origin
       : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
   static async getMatches(date?: string, league?: number): Promise<Match[]> {
@@ -22,7 +22,9 @@ export class FootballApi {
 
     const url =
       this.baseUrl + "/api/fixtures" + (params.toString() ? `?${params}` : "");
-    const data = await apiCall<{ matches: Match[] }>(url, { cache: "no-store" });
+    const data = await apiCall<{ matches: Match[] }>(url, {
+      cache: "no-store",
+    });
     return data.matches || [];
   }
 
@@ -36,20 +38,27 @@ export class FootballApi {
 
     const url =
       this.baseUrl + "/api/fixtures" + (params.toString() ? `?${params}` : "");
-    const data = await apiCall<{ matches: Match[] }>(url, { cache: "no-store" });
+    const data = await apiCall<{ matches: Match[] }>(url, {
+      cache: "no-store",
+    });
     return data.matches || [];
   }
 
   static async getLeagues(): Promise<League[]> {
     const url = this.baseUrl + "/api/leagues";
-    const data = await apiCall<{ leagues: League[] }>(url, { cache: "no-store" });
+    const data = await apiCall<{ leagues: League[] }>(url, {
+      cache: "no-store",
+    });
     return data.leagues || [];
   }
 
   // ⬇️ NUEVO: usa tu API interna (no expone la API key)
   static async getLeaguesByCountry(country: string): Promise<League[]> {
-    const url = this.baseUrl + `/api/leagues?country=${encodeURIComponent(country)}`;
-    const data = await apiCall<{ leagues: League[] }>(url, { cache: "no-store" });
+    const url =
+      this.baseUrl + `/api/leagues?country=${encodeURIComponent(country)}`;
+    const data = await apiCall<{ leagues: League[] }>(url, {
+      cache: "no-store",
+    });
     return data.leagues || [];
   }
 }
@@ -92,9 +101,9 @@ export class FootballApiServer {
       >("/fixtures/statistics", { fixture: match.fixture.id });
 
       const home =
-        obj.find((x) => x.team.id === match.teams.home.id)?.statistics ?? [];
+        obj.find(x => x.team.id === match.teams.home.id)?.statistics ?? [];
       const away =
-        obj.find((x) => x.team.id === match.teams.away.id)?.statistics ?? [];
+        obj.find(x => x.team.id === match.teams.away.id)?.statistics ?? [];
 
       return { home, away };
     } catch (error) {
@@ -107,24 +116,21 @@ export class FootballApiServer {
   }
 
   async getMatchLineups(
-    match: Match
+    fixtureId: string,
+    homeId: string,
+    awayId: string
   ): Promise<{ home: LineupTeam | null; away: LineupTeam | null }> {
     try {
       const obj = await this.request<LineupTeam[]>("/fixtures/lineups", {
-        fixture: match.fixture.id,
+        fixture: fixtureId,
       });
 
-      const home =
-        obj.find((x) => x.team.id === match.teams.home.id) ?? null;
-      const away =
-        obj.find((x) => x.team.id === match.teams.away.id) ?? null;
+      const home = obj.find(x => x.team.id === +homeId) ?? null;
+      const away = obj.find(x => x.team.id === +awayId) ?? null;
 
       return { home, away };
     } catch (error) {
-      console.error(
-        `Error fetching lineups for match ${match.fixture.id}:`,
-        error
-      );
+      console.error(`Error fetching lineups for match ${fixtureId}:`, error);
       return { home: null, away: null };
     }
   }
@@ -133,45 +139,55 @@ export class FootballApiServer {
     match: Match
   ): Promise<{ home: TeamMatchEvents; away: TeamMatchEvents }> {
     try {
-      const events = await this.request<Array<{
-        type: string,
-        time: { elapsed: number; extra: number | null },
-        team: { id: number, name: string, logo: string },
-        player: { id: number, name: string },
-        assist: { id: number | null, name: string | null },
-        detail: string,
-        comments: string | null
-      }>>(
-        "/fixtures/events",
-        { fixture: match.fixture.id }
-      );
+      const events = await this.request<
+        Array<{
+          type: string;
+          time: { elapsed: number; extra: number | null };
+          team: { id: number; name: string; logo: string };
+          player: { id: number; name: string };
+          assist: { id: number | null; name: string | null };
+          detail: string;
+          comments: string | null;
+        }>
+      >("/fixtures/events", { fixture: match.fixture.id });
 
       // Debug logging for problematic matches
-      if (match.teams.home.name.includes("Kairat") || match.teams.home.name.includes("Celtic") || 
-          match.teams.away.name.includes("Kairat") || match.teams.away.name.includes("Celtic")) {
-          console.log(`EVENTS API DEBUG for ${match.teams.home.name} vs ${match.teams.away.name}:`, {
-              fixtureId: match.fixture.id,
-              totalEvents: events.length,
-              homeTeamId: match.teams.home.id,
-              awayTeamId: match.teams.away.id,
-              allEvents: events.map(e => ({ 
-                  type: e.type, 
-                  time: e.time.elapsed, 
-                  teamId: e.team.id, 
-                  teamName: e.team.name,
-                  player: e.player.name 
-              }))
-          });
+      if (
+        match.teams.home.name.includes("Kairat") ||
+        match.teams.home.name.includes("Celtic") ||
+        match.teams.away.name.includes("Kairat") ||
+        match.teams.away.name.includes("Celtic")
+      ) {
+        console.log(
+          `EVENTS API DEBUG for ${match.teams.home.name} vs ${match.teams.away.name}:`,
+          {
+            fixtureId: match.fixture.id,
+            totalEvents: events.length,
+            homeTeamId: match.teams.home.id,
+            awayTeamId: match.teams.away.id,
+            allEvents: events.map(e => ({
+              type: e.type,
+              time: e.time.elapsed,
+              teamId: e.team.id,
+              teamName: e.team.name,
+              player: e.player.name,
+            })),
+          }
+        );
       }
 
-      const home = events.filter((x) => x.team.id === match.teams.home.id).map(event => ({
-        ...event,
-        type: event.type as EventsKeys
-      }));
-      const away = events.filter((x) => x.team.id === match.teams.away.id).map(event => ({
-        ...event,
-        type: event.type as EventsKeys
-      }));
+      const home = events
+        .filter(x => x.team.id === match.teams.home.id)
+        .map(event => ({
+          ...event,
+          type: event.type as EventsKeys,
+        }));
+      const away = events
+        .filter(x => x.team.id === match.teams.away.id)
+        .map(event => ({
+          ...event,
+          type: event.type as EventsKeys,
+        }));
 
       return { home, away };
     } catch (error) {
@@ -200,9 +216,12 @@ export class FootballApiServer {
         season,
         last: 50, // Get last 50 matches to show more data
       });
-      
-      return (matches ?? [])
-        .sort((a, b) => new Date(b.fixture.date).getTime() - new Date(a.fixture.date).getTime());
+
+      return (matches ?? []).sort(
+        (a, b) =>
+          new Date(b.fixture.date).getTime() -
+          new Date(a.fixture.date).getTime()
+      );
     } catch (error) {
       console.error(`Error fetching all matches for team ${teamId}:`, error);
       return [];

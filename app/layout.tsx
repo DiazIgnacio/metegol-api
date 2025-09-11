@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${sofiaSans.variable} antialiased max-w-md mx-auto min-h-svh`}
+        className={`${sofiaSans.variable} mx-auto min-h-svh max-w-md antialiased`}
       >
         {children}
       </body>

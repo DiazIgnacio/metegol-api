@@ -41,27 +41,26 @@ export default function DateSelector({
   const formatShort = (d: Date) => format(d, "dd/MM/yyyy");
 
   // ✅ ¿La fecha seleccionada coincide con alguna quick date?
-  const isQuickSelected = quickDates.some(({ date }) => isSameDay(selectedDate, date));
+  const isQuickSelected = quickDates.some(({ date }) =>
+    isSameDay(selectedDate, date)
+  );
 
   return (
-    <div className="flex items-center px-2 py-1.5 gap-1.5 overflow-x-auto scrollbar-none">
+    <div className="scrollbar-none flex items-center gap-1.5 overflow-x-auto px-2 py-1.5">
       {quickDates.map(({ label, date }) => {
         const selected = isSameDay(selectedDate, date);
         return (
           <button
             key={label}
             onClick={() => onDateChange(date)}
-            className={`
-              flex flex-col items-center justify-center
-              px-1.5 py-1.5 rounded-lg border text-center whitespace-nowrap text-xs
-              transition-colors flex-1 h-12
-              ${selected
-                ? "border-lime-500 text-lime-500 font-semibold"
-                : "border-gray-700 text-white/70 hover:bg-[#333]"}
-            `}
+            className={`flex h-12 flex-1 flex-col items-center justify-center rounded-lg border px-1.5 py-1.5 text-center text-xs whitespace-nowrap transition-colors ${
+              selected
+                ? "border-lime-500 font-semibold text-lime-500"
+                : "border-gray-700 text-white/70 hover:bg-[#333]"
+            } `}
           >
             <span className="text-[10px] md:text-xs">{label}</span>
-            <span className="mt-0.5 text-[9px] md:text-xs leading-tight">
+            <span className="mt-0.5 text-[9px] leading-tight md:text-xs">
               {format(date, "dd MMM", { locale: es })}
             </span>
           </button>
@@ -71,22 +70,20 @@ export default function DateSelector({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
-            onClick={() => setOpen((o) => !o)}
+            onClick={() => setOpen(o => !o)}
             // ✅ si NO es quick date, marcamos el botón de Calendario
-            className={`
-              flex flex-col items-center justify-center gap-1
-              px-2 py-1.5 rounded-lg border text-xs transition-colors flex-1 h-12
-              ${!isQuickSelected
-                ? "border-lime-500 text-lime-500 font-semibold"
-                : "border-gray-700 text-white/70 hover:bg-[#333]"}
-            `}
+            className={`flex h-12 flex-1 flex-col items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition-colors ${
+              !isQuickSelected
+                ? "border-lime-500 font-semibold text-lime-500"
+                : "border-gray-700 text-white/70 hover:bg-[#333]"
+            } `}
             aria-pressed={!isQuickSelected}
           >
             <div className="flex items-center gap-1">
-              <CalendarIcon className="w-3 h-3 md:w-4 md:h-4" />
+              <CalendarIcon className="h-3 w-3 md:h-4 md:w-4" />
               <span className="text-[10px] md:text-xs">Calendario</span>
             </div>
-            <span className="mt-0.5 text-[9px] md:text-xs leading-tight">
+            <span className="mt-0.5 text-[9px] leading-tight md:text-xs">
               {formatShort(selectedDate)}
             </span>
           </button>
@@ -94,12 +91,12 @@ export default function DateSelector({
 
         <PopoverContent
           align="end"
-          className="w-auto p-0 bg-[#1a1a1a] border border-gray-700 rounded-md"
+          className="w-auto rounded-md border border-gray-700 bg-[#1a1a1a] p-0"
         >
           <Calendar
             mode="single"
             selected={selectedDate}
-            onSelect={(date) => {
+            onSelect={date => {
               if (date) {
                 onDateChange(date);
                 setOpen(false);
