@@ -5,6 +5,7 @@ import { Search, X, ArrowLeft } from "lucide-react";
 import { Team } from "@/types/match";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { abbreviateTeamName } from "@/lib/utils";
 
 interface SearchDropdownProps {
   className?: string;
@@ -158,7 +159,7 @@ export default function SearchDropdown({
                 />
                 <div className="flex w-full items-center justify-between">
                   <span className="truncate text-sm font-medium text-white">
-                    {team.name}
+                    {abbreviateTeamName(team.name)}
                   </span>
                   {navigating === team.id && (
                     <div className="flex items-center space-x-2">

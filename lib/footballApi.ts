@@ -279,11 +279,99 @@ export class FootballApiServer {
     return teamData.map(({ team }) => team);
   }
 
+  async getAllLeagues(): Promise<League[]> {
+    const leagueData =
+      (await this.request<{ league: League }[]>("/leagues", {})) ?? [];
+    return leagueData.map(({ league }) => league);
+  }
+
   async getLeaguesByCountry(country: string): Promise<League[]> {
     const leagueData =
       (await this.request<{ league: League }[]>("/leagues", {
         country,
       })) ?? [];
     return leagueData.map(({ league }) => league);
+  }
+
+  async getStandings(
+    leagueId: number,
+    season: number
+  ): Promise<
+    {
+      league: {
+        id: number;
+        name: string;
+        season: number;
+        standings: Array<
+          Array<{
+            rank: number;
+            team: { id: number; name: string; logo: string };
+            points: number;
+            all: {
+              played: number;
+              win: number;
+              draw: number;
+              lose: number;
+              goals: { for: number; against: number };
+            };
+            form?: string;
+          }>
+        >;
+      };
+    }[]
+  > {
+    try {
+      const standings = await this.request<
+        {
+          league: {
+            id: number;
+            name: string;
+            season: number;
+            standings: Array<
+              Array<{
+                rank: number;
+                team: { id: number; name: string; logo: string };
+                points: number;
+                all: {
+                  played: number;
+                  win: number;
+                  draw: number;
+                  lose: number;
+                  goals: { for: number; against: number };
+                };
+                form?: string;
+              }>
+            >;
+          };
+        }[]
+      >("/standings", {
+        league: leagueId,
+        season,
+      });
+      return standings ?? [];
+    } catch (error) {
+      console.error(`Error fetching standings for league ${leagueId}:`, error);
+      return [];
+    }
+  }
+
+  async getLeagues(): Promise<
+    {
+      league: { id: number; name: string; logo: string };
+      country: { name: string };
+    }[]
+  > {
+    try {
+      const leagues = await this.request<
+        {
+          league: { id: number; name: string; logo: string };
+          country: { name: string };
+        }[]
+      >("/leagues", {});
+      return leagues ?? [];
+    } catch (error) {
+      console.error("Error fetching leagues:", error);
+      return [];
+    }
   }
 }

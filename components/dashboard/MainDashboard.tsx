@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import HeaderBar from "@/components/dashboard/HeaderBar";
 import DateSelector from "@/components/dashboard/DateSelector";
-import SubNavbar from "@/components/dashboard/SubNavbar";
+import CountryDropup from "@/components/dashboard/CountryDropup";
+import LeagueDropup from "@/components/dashboard/LeagueDropup";
 import LeagueSection from "@/components/dashboard/LeagueSection";
-import { Match } from "@/types/match";
+import { Match, League } from "@/types/match";
 import { FootballApi } from "@/lib/footballApi";
 import { format } from "date-fns";
+import GiftBanner from "./GiftBanner";
 
 interface Props {
   initialMatches?: Match[];
@@ -25,62 +27,189 @@ const leagueNames: Record<number, string> = {
   15: "Mundial Clubes",
 };
 
+// Lista de países con sus flags
+const COUNTRIES = [
+  { name: "Argentina", flag: "🇦🇷", code: "AR" },
+  { name: "Brazil", flag: "🇧🇷", code: "BR" },
+  { name: "Spain", flag: "🇪🇸", code: "ES" },
+  { name: "England", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", code: "GB-ENG" },
+  { name: "Germany", flag: "🇩🇪", code: "DE" },
+  { name: "Italy", flag: "🇮🇹", code: "IT" },
+  { name: "France", flag: "🇫🇷", code: "FR" },
+  { name: "Portugal", flag: "🇵🇹", code: "PT" },
+  { name: "Netherlands", flag: "🇳🇱", code: "NL" },
+  { name: "Belgium", flag: "🇧🇪", code: "BE" },
+  { name: "Mexico", flag: "🇲🇽", code: "MX" },
+  { name: "USA", flag: "🇺🇸", code: "US" },
+  { name: "Chile", flag: "🇨🇱", code: "CL" },
+  { name: "Colombia", flag: "🇨🇴", code: "CO" },
+  { name: "Uruguay", flag: "🇺🇾", code: "UY" },
+  { name: "Paraguay", flag: "🇵🇾", code: "PY" },
+  { name: "Peru", flag: "🇵🇪", code: "PE" },
+  { name: "Ecuador", flag: "🇪🇨", code: "EC" },
+  { name: "Venezuela", flag: "🇻🇪", code: "VE" },
+  { name: "Bolivia", flag: "🇧🇴", code: "BO" },
+  { name: "Russia", flag: "🇷🇺", code: "RU" },
+  { name: "Turkey", flag: "🇹🇷", code: "TR" },
+  { name: "Switzerland", flag: "🇨🇭", code: "CH" },
+  { name: "Austria", flag: "🇦🇹", code: "AT" },
+  { name: "Denmark", flag: "🇩🇰", code: "DK" },
+  { name: "Sweden", flag: "🇸🇪", code: "SE" },
+  { name: "Norway", flag: "🇳🇴", code: "NO" },
+  { name: "Scotland", flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", code: "GB-SCT" },
+  { name: "Czech-Republic", flag: "🇨🇿", code: "CZ" },
+  { name: "Poland", flag: "🇵🇱", code: "PL" },
+  { name: "Ukraine", flag: "🇺🇦", code: "UA" },
+  { name: "Croatia", flag: "🇭🇷", code: "HR" },
+  { name: "Serbia", flag: "🇷🇸", code: "RS" },
+  { name: "Europe", flag: "🇪🇺", code: "EU" },
+  { name: "South America", flag: "🌎", code: "CONMEBOL" },
+  { name: "World", flag: "🌍", code: "FIFA" },
+];
+
 export default function MainDashboard({ initialMatches = [] }: Props) {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const [matches, setMatches] = useState<Match[]>(initialMatches);
+  const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const fetchMatches = async (
-    date: Date,
-    leagueId: number | null,
-    country: string | null
-  ) => {
-    setLoading(true);
-    try {
-      const dateStr = format(date, "yyyy-MM-dd");
-      let newMatches: Match[] = [];
+  // Ref para cancelar requests anteriores
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-      if (leagueId !== null) {
-        // 1) Liga específica
-        newMatches = await FootballApi.getMatches(dateStr, leagueId);
-      } else if (country) {
-        // 2) Todas las ligas del país seleccionado
-        const leagues = await FootballApi.getLeaguesByCountry(country);
-        const leagueIds = leagues
-          .map(
-            (l: { id?: number; league?: { id: number } }) =>
-              l?.id ?? l?.league?.id
-          )
-          .filter((id: unknown): id is number => typeof id === "number");
-
-        const chunks = await Promise.all(
-          leagueIds.map((id: number) =>
-            FootballApi.getMatches(dateStr, id).catch(() => [] as Match[])
-          )
-        );
-        newMatches = chunks.flat();
-      } else {
-        // 3) Set por defecto (todas)
-        newMatches = await FootballApi.getMultipleLeaguesMatches(
-          dateStr,
-          DEFAULT_LEAGUES
-        );
+  const fetchMatches = useCallback(
+    async (date: Date, leagueId: number | null, country: string | null) => {
+      // Cancelar request anterior si existe
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
 
-      setMatches(newMatches);
-    } catch (err) {
-      console.error("Error fetching matches:", err);
-      setMatches([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      // Crear nuevo AbortController
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
 
+      setLoading(true);
+
+      try {
+        const dateStr = format(date, "yyyy-MM-dd");
+        let newMatches: Match[] = [];
+
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        if (leagueId !== null) {
+          // 1) Liga específica
+          const league = leagues.find(l => l.id === leagueId);
+          setLoadingMessage(
+            `Cargando partidos de ${league?.name || `Liga ${leagueId}`}...`
+          );
+          newMatches = await FootballApi.getMatches(dateStr, leagueId);
+        } else if (country) {
+          // 2) Todas las ligas del país seleccionado - solo usar ligas de la lista estática
+          setLoadingMessage(`Cargando ligas de ${country}...`);
+
+          // Filtrar ligas estáticas por país
+          const countryLeagues = leagues.filter(l => l.country === country);
+
+          if (abortController.signal.aborted) {
+            return;
+          }
+
+          const leagueIds = countryLeagues.map(l => l.id);
+
+          setLoadingMessage(
+            `Cargando partidos de ${leagueIds.length} ligas...`
+          );
+          const chunks = await Promise.all(
+            leagueIds.map((id: number) =>
+              FootballApi.getMatches(dateStr, id).catch(error => {
+                // Solo log si no fue cancelado
+                if (!abortController.signal.aborted) {
+                  console.warn(
+                    `Failed to fetch matches for league ${id}:`,
+                    error
+                  );
+                }
+                return [] as Match[];
+              })
+            )
+          );
+          newMatches = chunks.flat();
+        } else {
+          // 3) Set por defecto (todas)
+          setLoadingMessage("Cargando partidos principales...");
+          newMatches = await FootballApi.getMultipleLeaguesMatches(
+            dateStr,
+            DEFAULT_LEAGUES
+          );
+        }
+
+        // Solo actualizar estado si no fue cancelado
+        if (!abortController.signal.aborted) {
+          setMatches(newMatches);
+        }
+      } catch (err) {
+        // Solo log de errores que no sean de cancelación
+        if (!abortController.signal.aborted) {
+          console.error("Error fetching matches:", err);
+          setMatches([]);
+        }
+      } finally {
+        // Solo actualizar loading si no fue cancelado
+        if (!abortController.signal.aborted) {
+          setLoading(false);
+          setLoadingMessage("");
+        }
+      }
+    },
+    [leagues]
+  );
+
+  // Cargar ligas disponibles - solo usar la lista estática
   useEffect(() => {
-    fetchMatches(selectedDate, selectedLeague, null);
-  }, [selectedDate, selectedLeague]);
+    const loadLeagues = async () => {
+      try {
+        // Importar la lista estática desde SubNavbar
+        const { STATIC_LEAGUES } = await import(
+          "@/components/dashboard/SubNavbar"
+        );
+
+        // Solo usar la lista estática, no agregar ligas adicionales de la API
+        setLeagues(STATIC_LEAGUES);
+      } catch (error) {
+        console.error("Error loading leagues:", error);
+        // En caso de error, usar solo la lista estática
+        import("@/components/dashboard/SubNavbar").then(
+          ({ STATIC_LEAGUES }) => {
+            setLeagues(STATIC_LEAGUES);
+          }
+        );
+      }
+    };
+    loadLeagues();
+  }, []);
+
+  // Debounced effect para evitar llamadas excesivas
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchMatches(selectedDate, selectedLeague, selectedCountry);
+    }, 300); // 300ms de debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [selectedDate, selectedLeague, selectedCountry, fetchMatches]);
+
+  // Limpiar AbortController al desmontar
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     const term = searchTerm.toLowerCase();
@@ -126,12 +255,16 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
         />
+        <GiftBanner />
       </div>
 
       <div className="scrollbar-hide mt-4 mb-1 flex-1 space-y-4 overflow-y-auto px-2">
         {loading && (
           <div className="py-4 text-center text-white/60">
-            Cargando partidos...
+            <div className="flex items-center justify-center gap-2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white/80"></div>
+              {loadingMessage || "Cargando partidos..."}
+            </div>
           </div>
         )}
 
@@ -148,6 +281,7 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
               {Object.entries(grouped).map(([leagueId, ms]) => (
                 <LeagueSection
                   key={leagueId}
+                  leagueId={+leagueId}
                   leagueName={
                     ms[0]?.league?.name ||
                     leagueNames[+leagueId] ||
@@ -162,6 +296,7 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
           ) : (
             <div className="space-y-4">
               <LeagueSection
+                leagueId={selectedLeague}
                 leagueName={leagueLabel}
                 leagueLogo={filtered[0]?.league?.logo}
                 leagueCountry={filtered[0]?.league?.country}
@@ -171,14 +306,31 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
           ))}
       </div>
 
-      {/* Fixed bottom navigation */}
+      {/* Fixed bottom navigation - Dos dropups separados */}
       <div className="flex-shrink-0 px-2 pb-2">
-        <SubNavbar
-          selectedLeague={selectedLeague}
-          onLeagueChange={id => {
-            setSelectedLeague(id);
-          }}
-        />
+        <div className="grid grid-cols-2 gap-3">
+          {/* Dropup de Países */}
+          <CountryDropup
+            countries={COUNTRIES}
+            selectedCountry={selectedCountry}
+            onCountryChange={useCallback((country: string | null) => {
+              setSelectedCountry(country);
+              if (country) {
+                setSelectedLeague(null); // Limpiar liga cuando se selecciona país
+              }
+            }, [])}
+          />
+
+          {/* Dropup de Ligas */}
+          <LeagueDropup
+            leagues={leagues}
+            selectedCountry={selectedCountry}
+            selectedLeague={selectedLeague}
+            onLeagueChange={useCallback((leagueId: number | null) => {
+              setSelectedLeague(leagueId);
+            }, [])}
+          />
+        </div>
       </div>
     </div>
   );

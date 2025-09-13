@@ -4,13 +4,13 @@ import Image from "next/image";
 
 export default function GiftBanner() {
   return (
-    <div className="relative w-full overflow-hidden rounded-xl bg-black shadow-md">
+    <div className="relative w-full overflow-hidden px-2 shadow-md">
       {/* Imagen de la camiseta */}
       <Image
-        src="/gift.png" // Asegurate de mover la imagen a /public y renombrarla así
+        src="/ads.png" // Asegurate de mover la imagen a /public y renombrarla así
         alt="Sorteo de camiseta"
-        width={800}
-        height={200}
+        width={200}
+        height={100}
         className="h-auto w-full object-cover"
         priority
       />

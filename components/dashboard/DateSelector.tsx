@@ -59,8 +59,8 @@ export default function DateSelector({
                 : "border-gray-700 text-white/70 hover:bg-[#333]"
             } `}
           >
-            <span className="text-[10px] md:text-xs">{label}</span>
-            <span className="mt-0.5 text-[9px] leading-tight md:text-xs">
+            <span className="text-sm font-medium md:text-base">{label}</span>
+            <span className="mt-0.5 text-[8px] leading-tight md:text-[10px]">
               {format(date, "dd MMM", { locale: es })}
             </span>
           </button>
@@ -81,9 +81,11 @@ export default function DateSelector({
           >
             <div className="flex items-center gap-1">
               <CalendarIcon className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="text-[10px] md:text-xs">Calendario</span>
+              <span className="text-sm font-medium md:text-base">
+                Calendario
+              </span>
             </div>
-            <span className="mt-0.5 text-[9px] leading-tight md:text-xs">
+            <span className="mt-0.5 text-[8px] leading-tight md:text-[10px]">
               {formatShort(selectedDate)}
             </span>
           </button>

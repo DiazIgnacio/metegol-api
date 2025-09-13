@@ -1,6 +1,6 @@
 "use client";
 
-import { SearchIcon, ChevronDown } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 
 interface HeaderBarProps {
   liveCount: number;
@@ -17,7 +17,7 @@ export default function HeaderBar({
     <div className="flex items-center rounded-xl bg-[#1a1a1a] px-4 py-2 shadow-md">
       {/* En Vivo dinámico */}
       <span className="text-sm font-semibold text-green-400">
-        ● En Vivo<span className="text-white">({liveCount})</span>
+        ● En Vivo <span className="text-white">({liveCount})</span>
       </span>
 
       {/* Buscador */}
@@ -30,12 +30,6 @@ export default function HeaderBar({
           onChange={e => onSearchTermChange(e.target.value)}
           className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/50"
         />
-      </div>
-
-      {/* Dropdown “Todos” (sigue estático, el cambio de liga lo manejamos con SubNavbar) */}
-      <div className="flex items-center gap-1 text-sm text-white/70">
-        Todos
-        <ChevronDown className="h-4 w-4" />
       </div>
     </div>
   );

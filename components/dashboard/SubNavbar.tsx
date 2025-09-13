@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { FootballApi } from "@/lib/footballApi";
 import type { League } from "@/types/match";
 
 interface SubNavbarProps {
@@ -10,9 +9,8 @@ interface SubNavbarProps {
   onLeagueChange: (leagueId: number | null) => void;
 }
 
-// Ligas principales con mejores URLs de logos
-const STATIC_LEAGUES: League[] = [
-  // Argentina - Sistema completo
+export const STATIC_LEAGUES: League[] = [
+  // Argentina
   {
     id: 128,
     name: "Liga Profesional",
@@ -61,8 +59,14 @@ const STATIC_LEAGUES: League[] = [
     logo: "https://media.api-sports.io/football/leagues/484.png",
     country: "Argentina",
   },
+  {
+    id: 485,
+    name: "Primera D",
+    logo: "https://media.api-sports.io/football/leagues/485.png",
+    country: "Argentina",
+  },
 
-  // UEFA - Competencias europeas
+  // UEFA - Europe
   {
     id: 2,
     name: "Champions League",
@@ -81,8 +85,14 @@ const STATIC_LEAGUES: League[] = [
     logo: "https://media.api-sports.io/football/leagues/848.png",
     country: "Europe",
   },
+  {
+    id: 5,
+    name: "UEFA Nations League",
+    logo: "https://media.api-sports.io/football/leagues/5.png",
+    country: "Europe",
+  },
 
-  // España - Top tier
+  // Spain
   {
     id: 140,
     name: "La Liga",
@@ -95,8 +105,14 @@ const STATIC_LEAGUES: League[] = [
     logo: "https://media.api-sports.io/football/leagues/143.png",
     country: "Spain",
   },
+  {
+    id: 556,
+    name: "Supercopa España",
+    logo: "https://media.api-sports.io/football/leagues/556.png",
+    country: "Spain",
+  },
 
-  // Inglaterra - Premier League system
+  // England
   {
     id: 39,
     name: "Premier League",
@@ -109,8 +125,14 @@ const STATIC_LEAGUES: League[] = [
     logo: "https://media.api-sports.io/football/leagues/45.png",
     country: "England",
   },
+  {
+    id: 48,
+    name: "Community Shield",
+    logo: "https://media.api-sports.io/football/leagues/48.png",
+    country: "England",
+  },
 
-  // Italia - Serie A system
+  // Italy
   {
     id: 135,
     name: "Serie A",
@@ -123,22 +145,22 @@ const STATIC_LEAGUES: League[] = [
     logo: "https://media.api-sports.io/football/leagues/137.png",
     country: "Italy",
   },
+  {
+    id: 139,
+    name: "Supercoppa Italiana",
+    logo: "https://media.api-sports.io/football/leagues/139.png",
+    country: "Italy",
+  },
 
-  // Alemania - Bundesliga system
+  // Germany
   {
     id: 78,
     name: "Bundesliga",
     logo: "https://media.api-sports.io/football/leagues/78.png",
     country: "Germany",
   },
-  {
-    id: 81,
-    name: "DFB Pokal",
-    logo: "https://media.api-sports.io/football/leagues/81.png",
-    country: "Germany",
-  },
 
-  // Francia - Ligue 1 system
+  // France
   {
     id: 61,
     name: "Ligue 1",
@@ -152,17 +174,35 @@ const STATIC_LEAGUES: League[] = [
     country: "France",
   },
 
-  // Brasil - Sistema brasileiro
+  // Brazil
   {
     id: 71,
-    name: "Brasileirão",
+    name: "Brasileirão Série A",
     logo: "https://media.api-sports.io/football/leagues/71.png",
+    country: "Brazil",
+  },
+  {
+    id: 72,
+    name: "Brasileirão Série B",
+    logo: "https://media.api-sports.io/football/leagues/72.png",
     country: "Brazil",
   },
   {
     id: 73,
     name: "Copa do Brasil",
     logo: "https://media.api-sports.io/football/leagues/73.png",
+    country: "Brazil",
+  },
+  {
+    id: 76,
+    name: "Paulista A1",
+    logo: "https://media.api-sports.io/football/leagues/76.png",
+    country: "Brazil",
+  },
+  {
+    id: 77,
+    name: "Carioca",
+    logo: "https://media.api-sports.io/football/leagues/77.png",
     country: "Brazil",
   },
 
@@ -174,7 +214,7 @@ const STATIC_LEAGUES: League[] = [
     country: "Portugal",
   },
 
-  // Holanda
+  // Netherlands
   {
     id: 88,
     name: "Eredivisie",
@@ -182,7 +222,103 @@ const STATIC_LEAGUES: League[] = [
     country: "Netherlands",
   },
 
-  // CONMEBOL - Copas sudamericanas
+  // Mexico
+  {
+    id: 262,
+    name: "Liga MX",
+    logo: "https://media.api-sports.io/football/leagues/262.png",
+    country: "Mexico",
+  },
+  {
+    id: 263,
+    name: "Liga de Expansión MX",
+    logo: "https://media.api-sports.io/football/leagues/263.png",
+    country: "Mexico",
+  },
+  {
+    id: 264,
+    name: "Copa MX",
+    logo: "https://media.api-sports.io/football/leagues/264.png",
+    country: "Mexico",
+  },
+
+  // USA
+  {
+    id: 253,
+    name: "Major League Soccer",
+    logo: "https://media.api-sports.io/football/leagues/253.png",
+    country: "USA",
+  },
+  {
+    id: 254,
+    name: "USL Championship",
+    logo: "https://media.api-sports.io/football/leagues/254.png",
+    country: "USA",
+  },
+  {
+    id: 255,
+    name: "US Open Cup",
+    logo: "https://media.api-sports.io/football/leagues/255.png",
+    country: "USA",
+  },
+
+  // Chile
+  {
+    id: 265,
+    name: "Primera División",
+    logo: "https://media.api-sports.io/football/leagues/265.png",
+    country: "Chile",
+  },
+
+  // Colombia
+  {
+    id: 239,
+    name: "Liga BetPlay",
+    logo: "https://media.api-sports.io/football/leagues/239.png",
+    country: "Colombia",
+  },
+
+  // Uruguay
+  {
+    id: 318,
+    name: "Primera División",
+    logo: "https://media.api-sports.io/football/leagues/318.png",
+    country: "Uruguay",
+  },
+
+  // Paraguay
+  {
+    id: 250,
+    name: "División Profesional",
+    logo: "https://media.api-sports.io/football/leagues/250.png",
+    country: "Paraguay",
+  },
+
+  // Peru
+  {
+    id: 281,
+    name: "Liga 1",
+    logo: "https://media.api-sports.io/football/leagues/281.png",
+    country: "Peru",
+  },
+
+  // Ecuador
+  {
+    id: 242,
+    name: "Serie A",
+    logo: "https://media.api-sports.io/football/leagues/242.png",
+    country: "Ecuador",
+  },
+
+  // Bolivia
+  {
+    id: 270,
+    name: "División Profesional",
+    logo: "https://media.api-sports.io/football/leagues/270.png",
+    country: "Bolivia",
+  },
+
+  // CONMEBOL - South America
   {
     id: 13,
     name: "Copa Libertadores",
@@ -195,8 +331,28 @@ const STATIC_LEAGUES: League[] = [
     logo: "https://media.api-sports.io/football/leagues/11.png",
     country: "South America",
   },
+  {
+    id: 12,
+    name: "Recopa Sudamericana",
+    logo: "https://media.api-sports.io/football/leagues/12.png",
+    country: "South America",
+  },
 
-  // Mundial
+  // Turkey
+  {
+    id: 203,
+    name: "Süper Lig",
+    logo: "https://media.api-sports.io/football/leagues/203.png",
+    country: "Turkey",
+  },
+
+  // World Competitions
+  {
+    id: 1,
+    name: "Copa del Mundo",
+    logo: "https://media.api-sports.io/football/leagues/1.png",
+    country: "World",
+  },
   {
     id: 15,
     name: "Mundial de Clubes",
@@ -204,9 +360,15 @@ const STATIC_LEAGUES: League[] = [
     country: "World",
   },
   {
-    id: 1,
-    name: "Copa del Mundo",
-    logo: "https://media.api-sports.io/football/leagues/1.png",
+    id: 4,
+    name: "Eurocopa",
+    logo: "https://media.api-sports.io/football/leagues/4.png",
+    country: "World",
+  },
+  {
+    id: 9,
+    name: "Copa América",
+    logo: "https://media.api-sports.io/football/leagues/9.png",
     country: "World",
   },
 ];
@@ -218,35 +380,8 @@ export default function SubNavbar({
   const [leagues, setLeagues] = useState<League[]>(STATIC_LEAGUES);
 
   useEffect(() => {
-    const fetchLeagues = async () => {
-      try {
-        const fetched = await FootballApi.getLeagues();
-        // Merge: priorizamos los logos locales para la estética
-        const merged = STATIC_LEAGUES.map(staticL => {
-          const remote = fetched.find(
-            (f: { id?: number; league?: { id: number } }) =>
-              f.id === staticL.id || f.league?.id === staticL.id
-          );
-          if (remote?.league) {
-            return {
-              ...staticL,
-              id: remote.league.id,
-              name: remote.league.name,
-              country:
-                remote.league.country || remote.country || staticL.country,
-              logo: staticL.logo,
-            };
-          } else if (remote) {
-            return { ...staticL, ...remote, logo: staticL.logo };
-          }
-          return staticL;
-        });
-        setLeagues(merged);
-      } catch {
-        setLeagues(STATIC_LEAGUES);
-      }
-    };
-    fetchLeagues();
+    // Solo usar las ligas estáticas definidas, no llamar a la API
+    setLeagues(STATIC_LEAGUES);
   }, []);
 
   // Organizamos todas las ligas con Argentina al principio

@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { Match, LineupTeam } from "@/types/match";
 import { Lineups } from "@/components/Lineups";
 import { useLineups } from "@/hooks/useLineups";
+import { abbreviateTeamName } from "@/lib/utils";
 
 const getStat = (
   stats: { type: string; value: string | number | null }[] | undefined,
@@ -14,6 +15,113 @@ const getStat = (
   const f = stats?.find(s => s.type === type);
   return f?.value ?? "—";
 };
+
+// Goals Slider Component
+interface Goal {
+  player: { name: string };
+  time: { elapsed: number };
+  detail: string;
+  comments: string | null;
+}
+
+interface GoalsSliderProps {
+  goals: Goal[];
+  isHomeTeam?: boolean;
+}
+
+function GoalsSlider({ goals, isHomeTeam = true }: GoalsSliderProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-play functionality
+  useEffect(() => {
+    if (goals.length <= 1) return;
+
+    intervalRef.current = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % goals.length);
+    }, 3000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [goals.length]);
+
+  if (goals.length === 0) return null;
+
+  const currentGoal = goals[currentIndex];
+
+  const isPenaltyShootout =
+    currentGoal.detail === "Penalty" &&
+    currentGoal.comments === "Penalty Shootout";
+  const timeDisplay = isPenaltyShootout
+    ? "PEN"
+    : `${currentGoal.time.elapsed}"`;
+
+  return (
+    <div className="flex min-h-[20px] justify-center px-1">
+      <div
+        className="transform transition-all duration-700 ease-in-out"
+        key={currentIndex}
+        style={{
+          animation: `${isHomeTeam ? "slideInLeft" : "slideInRight"} 0.7s ease-out`,
+        }}
+      >
+        <div className="flex items-center justify-center gap-2 text-xs">
+          {isHomeTeam ? (
+            <>
+              <span className="text-center font-medium text-white/90">
+                {currentGoal.player.name}
+              </span>
+              <span className="font-semibold text-emerald-400">
+                {timeDisplay}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-emerald-400">
+                {timeDisplay}
+              </span>
+              <span className="text-center font-medium text-white/90">
+                {currentGoal.player.name}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes slideInLeft {
+          0% {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          50% {
+            opacity: 0.5;
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes slideInRight {
+          0% {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          50% {
+            opacity: 0.5;
+          }
+          100% {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 interface Props {
   match: Match;
@@ -32,7 +140,7 @@ export default function SimpleMatchCard({ match }: Props) {
   const isLive = ["1H", "2H", "LIVE", "ET", "P"].includes(
     match.fixture.status.short
   );
-  const isFinished = match.fixture.status.short === "FT";
+  const isFinished = ["FT", "AET", "PEN"].includes(match.fixture.status.short);
   const isUpcoming = match.fixture.status.short === "NS";
 
   // Debug logging for problematic matches
@@ -43,7 +151,7 @@ export default function SimpleMatchCard({ match }: Props) {
     match.teams.away.name.includes("Celtic")
   ) {
     console.log("SIMPLE MATCH DEBUG:", {
-      teams: `${match.teams.home.name} vs ${match.teams.away.name}`,
+      teams: `${abbreviateTeamName(match.teams.home.name)} vs ${abbreviateTeamName(match.teams.away.name)}`,
       fixtureId: match.fixture.id,
       status: match.fixture.status.short,
       elapsed: match.fixture.status.elapsed,
@@ -95,7 +203,7 @@ export default function SimpleMatchCard({ match }: Props) {
     if (isLive) {
       const minute = match.fixture.status.elapsed;
       if (minute !== null && minute !== undefined) {
-        return `${minute}’`;
+        return `${minute}'`;
       }
       return "EN VIVO";
     }
@@ -108,23 +216,19 @@ export default function SimpleMatchCard({ match }: Props) {
       });
     }
 
-    if (isFinished) return "";
+    if (isFinished) {
+      // Mostrar el tipo de finalización
+      if (match.fixture.status.short === "PEN") {
+        return "PEN";
+      } else if (match.fixture.status.short === "AET") {
+        return "T.E.";
+      } else if (match.fixture.status.short === "FT") {
+        return "Finalizado";
+      }
+      return "Finalizado"; // Por defecto para partidos finalizados
+    }
     return "";
   };
-
-  const allowedLeagues = [
-    "Copa de la Liga Profesional",
-    "Liga Profesional Argentina",
-    "Premier League",
-    "La Liga",
-    "Serie A",
-    "Bundesliga",
-    "Ligue 1",
-  ];
-
-  const leagueName = match.league?.name;
-  const homeShots = getStat(match.statistics?.home, "Total Shots");
-  const awayShots = getStat(match.statistics?.away, "Total Shots");
 
   const possHome = getStat(match.statistics?.home, "Ball Possession");
   const possAway = getStat(match.statistics?.away, "Ball Possession");
@@ -133,180 +237,175 @@ export default function SimpleMatchCard({ match }: Props) {
     <div className="overflow-hidden rounded-lg border border-[#2a2e39] bg-[#181c23]">
       {/* Main Match Row - Clickable */}
       <div
-        className="flex cursor-pointer items-center justify-between px-1 py-2 transition-colors hover:bg-[#1f2329]"
+        className="cursor-pointer px-1 pt-1 pb-1 transition-colors hover:bg-[#1f2329]"
         onClick={() => setShowBasicInfo(!showBasicInfo)}
       >
-        {/* Time/Status */}
-        <div className="w-16 text-center">
-          {!isFinished && (
-            <span
-              className={`text-xs font-bold ${
-                isLive
-                  ? "text-[#c3cc5a]"
-                  : isUpcoming
-                    ? "text-white"
-                    : "text-white/60"
-              }`}
-            >
-              {formatTime()}
-            </span>
-          )}
-        </div>
+        <div className="flex items-center justify-between">
+          {/* Time/Status */}
+          <div className="flex flex-col items-start">
+            {/* Live Indicator */}
+            {isLive && (
+              <p className="w-16 text-right text-[10px] font-bold text-[#c3cc5a]">
+                En Vivo
+              </p>
+            )}
+            <div className="mr-2 w-16 text-right">
+              {(!isFinished ||
+                match.fixture.status.short === "PEN" ||
+                match.fixture.status.short === "AET" ||
+                match.fixture.status.short === "FT") && (
+                <span
+                  className={`font-bold ${
+                    isLive
+                      ? "text-[22px] text-[#c3cc5a]"
+                      : isUpcoming
+                        ? "text-[18px] text-white"
+                        : match.fixture.status.short === "PEN" ||
+                            match.fixture.status.short === "AET"
+                          ? "text-orange-400"
+                          : match.fixture.status.short === "FT" || isFinished
+                            ? "ml-1 text-[12px] text-gray-400"
+                            : "text-white/60"
+                  }`}
+                >
+                  {formatTime()}
+                </span>
+              )}
+            </div>
+          </div>
 
-        {/* Match Layout: Home Team - Logo - Score - Logo - Away Team */}
-        <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-          <div className="flex w-full items-center justify-center gap-2">
-            <span className="flex-1 text-right text-xs leading-tight font-semibold break-words text-white">
-              {home.name}
-            </span>
-            <Image
-              src={home.logo}
-              alt={home.name}
-              width={24}
-              height={24}
-              className="flex-shrink-0 rounded-full bg-white"
-            />
-
-            <div className="flex items-center gap-1 px-2">
-              <span className="text-lg font-bold text-white">
-                {isUpcoming ? "—" : match.goals.home}
+          {/* Match Layout: Home Team - Logo - Score - Logo - Away Team */}
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
+            <div className="flex w-full items-center justify-center gap-2">
+              <span className="flex-1 text-right text-xs leading-tight font-semibold break-words text-white">
+                {abbreviateTeamName(home.name)}
               </span>
-              <span className="text-lg font-bold text-white/60">—</span>
-              <span className="text-lg font-bold text-white">
-                {isUpcoming ? "—" : match.goals.away}
+              <Image
+                src={home.logo}
+                alt={home.name}
+                width={24}
+                height={24}
+                className="flex-shrink-0 rounded-full bg-white"
+              />
+
+              <div className="flex items-center gap-1 px-2">
+                <span className="text-[22px] font-bold text-white">
+                  {isUpcoming ? "—" : match.goals.home}
+                </span>
+                <span className="text-[10px] font-extrabold text-white/60">
+                  -
+                </span>
+                <span className="text-[22px] font-bold text-white">
+                  {isUpcoming ? "—" : match.goals.away}
+                </span>
+              </div>
+
+              <Image
+                src={away.logo}
+                alt={away.name}
+                width={24}
+                height={24}
+                className="flex-shrink-0 rounded-full bg-white"
+              />
+              <span className="flex-1 text-left text-xs leading-tight font-semibold break-words text-white">
+                {abbreviateTeamName(away.name)}
               </span>
             </div>
 
-            <Image
-              src={away.logo}
-              alt={away.name}
-              width={24}
-              height={24}
-              className="flex-shrink-0 rounded-full bg-white"
-            />
-            <span className="flex-1 text-left text-xs leading-tight font-semibold break-words text-white">
-              {away.name}
-            </span>
-          </div>
-          {!isUpcoming &&
-            allowedLeagues.includes(leagueName) &&
-            homeShots !== null &&
-            homeShots !== undefined &&
-            awayShots !== null &&
-            awayShots !== undefined && (
-              <div className="flex items-center text-[10px] text-white/60">
-                <span>({homeShots})</span>
-                <span>—</span>
-                <span>({awayShots})</span>
+            {/* Goals Sliders - Below team names within same clickable block */}
+            {!isUpcoming && (goalsHome.length > 0 || goalsAway.length > 0) && (
+              <div className="grid w-full grid-cols-2 gap-1">
+                {/* Home Team Goals Slider */}
+                <div className="flex w-full items-center justify-center">
+                  {goalsHome.length > 0 ? (
+                    <GoalsSlider goals={goalsHome} isHomeTeam={true} />
+                  ) : (
+                    <div></div>
+                  )}
+                </div>
+
+                {/* Away Team Goals Slider */}
+                <div className="flex w-full items-center justify-center">
+                  {goalsAway.length > 0 ? (
+                    <GoalsSlider goals={goalsAway} isHomeTeam={false} />
+                  ) : (
+                    <div></div>
+                  )}
+                </div>
               </div>
             )}
-        </div>
+          </div>
 
-        {/* Expand Icon */}
-        <div className="flex w-8 justify-center">
-          {showBasicInfo ? (
-            <ChevronUp size={16} className="text-white/60" />
-          ) : (
-            <ChevronDown size={16} className="text-white/60" />
-          )}
+          {/* Expand Icon */}
+          <div className="flex w-8 justify-center">
+            {showBasicInfo ? (
+              <ChevronUp size={16} className="text-white/60" />
+            ) : (
+              <ChevronDown size={16} className="text-white/60" />
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Cards and Possession Row - Always visible when match has started */}
-      {!isUpcoming && (
-        <div className="flex items-center justify-between border-t border-[#2a2e39] bg-[#0f1419] px-3 py-2 text-xs">
-          {/* Home Team Cards */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <span>🟨</span>
-              <span className="text-white/80">{yellowsHome}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span>🟥</span>
-              <span className="text-white/80">{redsHome}</span>
-            </div>
-          </div>
-
-          {/* Possession */}
-          {possHome !== "—" && possAway !== "—" && (
-            <div className="flex items-center gap-2 text-white/80">
-              <span className="font-semibold">{possHome}</span>
-              <span className="text-[10px] text-white/50">POSESIÓN</span>
-              <span className="font-semibold">{possAway}</span>
-            </div>
-          )}
-
-          {/* Away Team Cards */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <span>🟥</span>
-              <span className="text-white/80">{redsAway}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span>🟨</span>
-              <span className="text-white/80">{yellowsAway}</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Basic Info Section */}
       <div
         className={`overflow-hidden transition-all duration-300 ease-in-out ${showBasicInfo ? "max-h-96 opacity-100" : "max-h-0 opacity-0"}`}
       >
         <div className="border-t border-[#2a2e39] bg-[#0f1419] px-3 pb-3">
-          {/* Goals */}
-          {(goalsHome.length > 0 || goalsAway.length > 0) && (
-            <div className="mt-2 mb-3 grid grid-cols-2 gap-3 text-xs">
-              <div className="flex flex-col gap-1">
-                {goalsHome.map((goal, i) => {
-                  const isPenalty =
-                    goal.detail === "Penalty" &&
-                    goal.comments !== "Penalty Shootout";
-                  const isPenaltyShootout =
-                    goal.detail === "Penalty" &&
-                    goal.comments === "Penalty Shootout";
-                  const timeDisplay = isPenaltyShootout
-                    ? "PEN"
-                    : `${goal.time.elapsed}mins`;
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 text-sm text-white/90"
+          {/* Cards and Possession - Same layout as before */}
+          {!isUpcoming && (
+            <div className="mt-2 mb-3">
+              <div className="flex items-center justify-between text-xs">
+                {/* Home Team Cards */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span>🟨</span>
+                    <span className="text-white/80">{yellowsHome}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>🟥</span>
+                    <span className="text-white/80">{redsHome}</span>
+                  </div>
+                </div>
+
+                {/* Possession - Center */}
+                {possHome !== "—" && possAway !== "—" && (
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`font-semibold ${
+                        parseInt(possHome?.toString().replace("%", "") || "0") >
+                        parseInt(possAway?.toString().replace("%", "") || "0")
+                          ? "text-green-400"
+                          : "text-white/80"
+                      }`}
                     >
-                      <span>
-                        {isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}
-                      </span>
-                      <span>{timeDisplay}</span>
-                      <span>{goal.player.name}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                {goalsAway.map((goal, i) => {
-                  const isPenalty =
-                    goal.detail === "Penalty" &&
-                    goal.comments !== "Penalty Shootout";
-                  const isPenaltyShootout =
-                    goal.detail === "Penalty" &&
-                    goal.comments === "Penalty Shootout";
-                  const timeDisplay = isPenaltyShootout
-                    ? "PEN"
-                    : `${goal.time.elapsed}mins`;
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 text-sm text-white/90"
+                      {possHome}
+                    </span>
+                    <span className="text-[10px] text-white/50">POSESIÓN</span>
+                    <span
+                      className={`font-semibold ${
+                        parseInt(possAway?.toString().replace("%", "") || "0") >
+                        parseInt(possHome?.toString().replace("%", "") || "0")
+                          ? "text-green-400"
+                          : "text-white/80"
+                      }`}
                     >
-                      <span>{goal.player.name}</span>
-                      <span>{timeDisplay}</span>
-                      <span>
-                        {isPenalty ? "⚽🥅" : isPenaltyShootout ? "⚽🏆" : "⚽"}
-                      </span>
-                    </div>
-                  );
-                })}
+                      {possAway}
+                    </span>
+                  </div>
+                )}
+
+                {/* Away Team Cards */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span>🟥</span>
+                    <span className="text-white/80">{redsAway}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>🟨</span>
+                    <span className="text-white/80">{yellowsAway}</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -565,7 +664,7 @@ function LiveMap({
       {/* Match status */}
       <div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2 transform text-center text-xs text-white/70">
         <div className="font-semibold text-[#66e192]">
-          {minute ? `${minute}mins` : "Formación inicial"}
+          {minute ? `${minute}"` : "Formación inicial"}
         </div>
       </div>
     </div>
@@ -630,7 +729,7 @@ function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
             className="flex items-center justify-between space-x-2 border-b border-white/10 py-1 text-xs text-white/75"
           >
             <span className="w-8 text-white/60">
-              {e?.time?.elapsed ?? "—"}mins
+              {e?.time?.elapsed ?? "—"}&quot;
             </span>
             <span className="mx-2 flex-1">| {translatedType}</span>
             <span className="max-w-[100px] truncate text-right text-white/80">

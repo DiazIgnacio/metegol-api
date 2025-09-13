@@ -5,7 +5,13 @@
       "Bash(yarn build)",
       "Bash(yarn lint)",
       "Bash(rm:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(yarn format:fix)",
+      "WebFetch(domain:www.api-football.com)",
+      "WebFetch(domain:v3.football.api-sports.io)",
+      "WebSearch",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:dashboard.api-football.com)"
     ],
     "deny": [],
     "ask": []

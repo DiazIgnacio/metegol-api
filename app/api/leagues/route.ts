@@ -19,7 +19,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ leagues });
     }
 
-    return NextResponse.json({ leagues: [] });
+    // Sin filtro, devolver todas las ligas
+    const allLeagues = await api.getAllLeagues();
+    return NextResponse.json({ leagues: allLeagues });
   } catch (error) {
     console.error("Leagues API Error:", error);
     return NextResponse.json(

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import SimpleMatchCard from "./SimpleMatchCard";
 import type { Match } from "@/types/match";
 import Argentina from "@/public/Argentina.png";
@@ -9,20 +10,16 @@ interface Props {
   leagueName: string;
   leagueLogo?: string;
   leagueCountry?: string;
+  leagueId?: number;
   matches: Match[];
 }
 
 export default function LeagueSection({
   leagueName,
   leagueLogo,
-  leagueCountry,
+  leagueId,
   matches,
 }: Props) {
-  const liveMatches = matches.filter(m =>
-    ["1H", "2H", "LIVE", "ET", "P"].includes(m.fixture.status.short)
-  );
-  const hasLiveMatches = liveMatches.length > 0;
-
   const isArgentineLeague =
     leagueName === "Liga Profesional de Futbol" ||
     leagueName?.includes("Liga Profesional");
@@ -42,36 +39,35 @@ export default function LeagueSection({
             priority
           />
         )}
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="relative z-10 flex h-6 items-center justify-between">
+          <div className="flex items-center gap-2">
             {leagueLogo && (
               <Image
                 src={leagueLogo}
-                width={24}
-                height={24}
+                width={20}
+                height={20}
                 alt={leagueName}
                 className="rounded-full bg-white"
               />
             )}
             <div className="flex flex-col">
-              <h3 className="truncate text-sm font-bold text-white">
+              <h3 className="truncate text-[14px] font-bold text-white">
                 {leagueName}
               </h3>
-              {leagueCountry && (
-                <span className="text-xs text-white/70">{leagueCountry}</span>
-              )}
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-white/70">
-                {matches.length} partido{matches.length !== 1 ? "s" : ""}
-              </span>
-              {hasLiveMatches && (
-                <span className="rounded-full bg-[#00ff7f] px-2 py-1 font-bold text-black">
-                  {liveMatches.length} EN VIVO
-                </span>
+              {leagueId ? (
+                <Link
+                  href={`/league/${leagueId}`}
+                  className="cursor-pointer text-white/70 underline decoration-dotted underline-offset-2 transition-colors hover:text-white"
+                >
+                  Datos de Liga
+                </Link>
+              ) : (
+                <span className="text-white/70">Datos de Liga</span>
               )}
             </div>
           </div>
