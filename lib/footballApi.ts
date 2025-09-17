@@ -150,6 +150,19 @@ export class FootballApi {
       return null;
     }
   }
+
+  static async getStandings(leagueId: number | string): Promise<any> {
+    try {
+      const url = `${this.baseUrl}/api/standings?id=${leagueId}`;
+      const data = await apiCall<any>(url, {
+        cache: "no-store",
+      });
+      return data;
+    } catch (error) {
+      console.error("Error fetching standings:", error);
+      return null;
+    }
+  }
 }
 
 export class FootballApiServer {

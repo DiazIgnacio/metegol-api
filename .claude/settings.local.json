@@ -25,7 +25,8 @@
       "Bash(taskkill:*)",
       "Bash(yarn lint:*)",
       "Bash(git config:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": []

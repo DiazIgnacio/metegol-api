@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { STATIC_LEAGUES } from "@/lib/leagues-data";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "ID de liga requerido" },
+        { status: 400 }
+      );
+    }
+
     const leagueId = parseInt(id);
 
     if (!leagueId || isNaN(leagueId)) {

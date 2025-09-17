@@ -49,7 +49,7 @@ Cache permanente para datos estáticos ✅
 - ✅ `app/api/teams/route.ts` - Equipos con cache de 24h
 - ✅ `app/api/teams/[id]/route.ts` - Equipo por ID
 - ✅ `app/api/leagues/route.ts` - Ligas con cache de 24h
-- ✅ `app/api/standings/[id]/route.ts` - Standings inteligente
+- ✅ `app/api/standings/route.ts` - Standings inteligente
 - ✅ `app/api/cache/route.ts` - Gestión de cache
 - ✅ `app/api/cache/stats/route.ts` - Estadísticas
 - ✅ `app/api/cron/refresh-cache/route.ts` - Jobs automáticos

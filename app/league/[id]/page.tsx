@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Trophy, Target, Users } from "lucide-react";
+import { FootballApi } from "@/lib/footballApi";
 
 interface Standing {
   rank: number;
@@ -46,13 +47,12 @@ export default function LeaguePage() {
     const fetchLeagueData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/standings/${leagueId}`);
+        const data = await FootballApi.getStandings(leagueId);
 
-        if (!response.ok) {
+        if (!data) {
           throw new Error("Error al cargar los datos de la liga");
         }
 
-        const data = await response.json();
         setStandings(data.standings || []);
         setLeagueInfo(data.league || null);
       } catch (err) {
