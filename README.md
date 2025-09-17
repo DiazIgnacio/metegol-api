@@ -1,1 +1,1 @@
-trigger redeploy 7
+trigger redeploy 8
