@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // API Cache collection - solo lectura pública para datos de partidos
+    match /api_cache/{document} {
+      // Permitir lectura pública para datos de cache de partidos
+      allow read: if true;
+
+      // Solo permitir escritura desde server-side (Admin SDK)
+      // El Admin SDK bypassa estas reglas, así que esto bloquea cliente directo
+      allow write: if false;
+    }
+
+    // Cache changes collection - solo para sistema interno
+    match /cache_changes/{document} {
+      allow read, write: if false;
+    }
+
+    // Cache metadata collection - solo para sistema interno
+    match /cache_meta/{document} {
+      allow read, write: if false;
+    }
+
+    // Admin authentication data - completamente privado
+    match /admin_users/{document} {
+      allow read, write: if false;
+    }
+
+    // Sync statistics - solo lectura para admin autenticado
+    match /sync_stats/{document} {
+      allow read: if request.auth != null &&
+                     request.auth.token.admin == true;
+      allow write: if false;
+    }
+
+    // Default: denegar todo lo demás
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

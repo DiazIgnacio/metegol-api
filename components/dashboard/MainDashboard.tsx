@@ -9,6 +9,7 @@ import LeagueSection from "@/components/dashboard/LeagueSection";
 import { Match, League } from "@/types/match";
 import { FootballApi } from "@/lib/footballApi";
 import { format } from "date-fns";
+import { STATIC_LEAGUES } from "@/lib/leagues-data";
 import GiftBanner from "./GiftBanner";
 
 interface Props {
@@ -72,7 +73,7 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [selectedLeague, setSelectedLeague] = useState<number | null>(null);
   const [matches, setMatches] = useState<Match[]>(initialMatches);
-  const [leagues, setLeagues] = useState<League[]>([]);
+  const [leagues, setLeagues] = useState<League[]>(STATIC_LEAGUES);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -101,52 +102,32 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
           return;
         }
 
+        // OPTIMIZED: Always use single API call with multiple leagues
+        let targetLeagues: number[];
+
         if (leagueId !== null) {
-          // 1) Liga específica
+          // Single league
+          targetLeagues = [leagueId];
           const league = leagues.find(l => l.id === leagueId);
           setLoadingMessage(
             `Cargando partidos de ${league?.name || `Liga ${leagueId}`}...`
           );
-          newMatches = await FootballApi.getMatches(dateStr, leagueId);
         } else if (country) {
-          // 2) Todas las ligas del país seleccionado - solo usar ligas de la lista estática
-          setLoadingMessage(`Cargando ligas de ${country}...`);
-
-          // Filtrar ligas estáticas por país
+          // All leagues from selected country
           const countryLeagues = leagues.filter(l => l.country === country);
-
-          if (abortController.signal.aborted) {
-            return;
-          }
-
-          const leagueIds = countryLeagues.map(l => l.id);
-
-          setLoadingMessage(
-            `Cargando partidos de ${leagueIds.length} ligas...`
-          );
-          const chunks = await Promise.all(
-            leagueIds.map((id: number) =>
-              FootballApi.getMatches(dateStr, id).catch(error => {
-                // Solo log si no fue cancelado
-                if (!abortController.signal.aborted) {
-                  console.warn(
-                    `Failed to fetch matches for league ${id}:`,
-                    error
-                  );
-                }
-                return [] as Match[];
-              })
-            )
-          );
-          newMatches = chunks.flat();
+          targetLeagues = countryLeagues.map(l => l.id);
+          setLoadingMessage(`Cargando partidos de ${country}...`);
         } else {
-          // 3) Set por defecto (todas)
+          // Default leagues
+          targetLeagues = DEFAULT_LEAGUES;
           setLoadingMessage("Cargando partidos principales...");
-          newMatches = await FootballApi.getMultipleLeaguesMatches(
-            dateStr,
-            DEFAULT_LEAGUES
-          );
         }
+
+        // Single optimized API call
+        newMatches = await FootballApi.getMultipleLeaguesMatches(
+          dateStr,
+          targetLeagues
+        );
 
         // Solo actualizar estado si no fue cancelado
         if (!abortController.signal.aborted) {
@@ -173,21 +154,15 @@ export default function MainDashboard({ initialMatches = [] }: Props) {
   useEffect(() => {
     const loadLeagues = async () => {
       try {
-        // Importar la lista estática desde SubNavbar
-        const { STATIC_LEAGUES } = await import(
-          "@/components/dashboard/SubNavbar"
-        );
+        // Importar la lista estática desde leagues-data
+        const { STATIC_LEAGUES } = await import("@/lib/leagues-data");
 
         // Solo usar la lista estática, no agregar ligas adicionales de la API
         setLeagues(STATIC_LEAGUES);
       } catch (error) {
         console.error("Error loading leagues:", error);
         // En caso de error, usar solo la lista estática
-        import("@/components/dashboard/SubNavbar").then(
-          ({ STATIC_LEAGUES }) => {
-            setLeagues(STATIC_LEAGUES);
-          }
-        );
+        setLeagues(STATIC_LEAGUES);
       }
     };
     loadLeagues();

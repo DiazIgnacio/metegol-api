@@ -11,11 +11,15 @@ import { EventsKeys } from "@/types/match";
 
 export class FootballApi {
   private static baseUrl: string =
-    typeof window !== "undefined"
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (typeof window !== "undefined"
       ? window.location.origin
-      : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+      : "http://localhost:3000");
 
   static async getMatches(date?: string, league?: number): Promise<Match[]> {
+    console.log(`🌐 FRONTEND: Using base URL: ${this.baseUrl}`);
+
+    // Primero intentar carga normal
     const params = new URLSearchParams();
     if (date) params.append("date", date);
     if (league) params.append("league", league.toString());
@@ -25,6 +29,9 @@ export class FootballApi {
     const data = await apiCall<{ matches: Match[] }>(url, {
       cache: "no-store",
     });
+
+    // Just return what we have from cache (no external API calls)
+
     return data.matches || [];
   }
 
@@ -32,6 +39,7 @@ export class FootballApi {
     date?: string,
     leagues?: number[]
   ): Promise<Match[]> {
+    // Primero intentar carga normal
     const params = new URLSearchParams();
     if (date) params.append("date", date);
     if (leagues?.length) params.append("leagues", leagues.join(","));
@@ -41,6 +49,9 @@ export class FootballApi {
     const data = await apiCall<{ matches: Match[] }>(url, {
       cache: "no-store",
     });
+
+    // Just return what we have from cache (no external API calls)
+
     return data.matches || [];
   }
 
@@ -60,6 +71,84 @@ export class FootballApi {
       cache: "no-store",
     });
     return data.leagues || [];
+  }
+
+  // ⬇️ NUEVO: Métodos para manejo de carga bajo demanda
+  // loadOnDemand removed to prevent external API calls
+
+  static async checkDataAvailability(
+    date: string,
+    leagues?: number[]
+  ): Promise<{
+    available: number;
+    missing: number;
+    needsLoading: boolean;
+    matches: Match[];
+  } | null> {
+    try {
+      const params = new URLSearchParams({ date });
+      if (leagues?.length) {
+        params.append("leagues", leagues.join(","));
+      }
+
+      const response = await fetch(
+        `${this.baseUrl}/api/load-on-demand?${params.toString()}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.success ? result.availability : null;
+    } catch (error) {
+      console.error("Error checking data availability:", error);
+      return null;
+    }
+  }
+
+  static async preloadData(
+    days: number = 14,
+    leagues?: number[]
+  ): Promise<{ successful: number; total: number } | null> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/preload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          days,
+          leagues,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.success ? result.stats : null;
+    } catch (error) {
+      console.error("Error in preload:", error);
+      return null;
+    }
+  }
+
+  static async getPreloadStatus(): Promise<any | null> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/preload?action=status`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.success ? result.status : null;
+    } catch (error) {
+      console.error("Error getting preload status:", error);
+      return null;
+    }
   }
 }
 

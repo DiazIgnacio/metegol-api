@@ -1,36 +1,24 @@
 import React from "react";
 import Image from "next/image";
-import { useLineups } from "@/hooks/useLineups";
 import { LineupTeam } from "@/types/match";
 
 interface LineupsProps {
-  fixtureId: number;
-  homeId: number;
-  awayId: number;
+  lineups?: {
+    home: LineupTeam;
+    away: LineupTeam;
+  };
 }
 
-export const Lineups: React.FC<LineupsProps> = ({
-  fixtureId,
-  homeId,
-  awayId,
-}) => {
-  const { lineups, loading } = useLineups(fixtureId, homeId, awayId);
-
-  if (loading)
-    return (
-      <div className="py-4 text-center text-white/60">
-        Cargando formaciones...
-      </div>
-    );
-  if (!lineups || lineups.length === 0)
+export const Lineups: React.FC<LineupsProps> = ({ lineups }) => {
+  if (!lineups)
     return (
       <div className="py-4 text-center text-white/60">
         No hay formaciones disponibles.
       </div>
     );
 
-  const homeTeam = lineups[0];
-  const awayTeam = lineups[1];
+  const homeTeam = lineups.home;
+  const awayTeam = lineups.away;
 
   return (
     <div className="flex w-full flex-col gap-4 rounded-lg border border-[#333] bg-[#232323] p-4">

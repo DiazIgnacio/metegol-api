@@ -18,6 +18,14 @@ const eslintConfig = [
     },
     rules: {
       "prettier/prettier": "error",
+      "@typescript-eslint/no-explicit-any": "warn", // Allow any in some cases for production
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
     },
   },
 ];

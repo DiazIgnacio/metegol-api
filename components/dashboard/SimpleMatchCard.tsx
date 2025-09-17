@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { Match, LineupTeam } from "@/types/match";
 import { Lineups } from "@/components/Lineups";
-import { useLineups } from "@/hooks/useLineups";
 import { abbreviateTeamName } from "@/lib/utils";
 
 const getStat = (
@@ -454,18 +453,12 @@ export default function SimpleMatchCard({ match }: Props) {
             {activeTab === "map" && (
               <LiveMap
                 minute={isLive ? (match.fixture.status.elapsed ?? null) : null}
-                fixtureId={match.fixture.id}
-                homeId={match.teams.home.id}
-                awayId={match.teams.away.id}
+                lineups={match.lineups}
               />
             )}
             {activeTab === "lineup" && (
               <div className="text-xs text-white/90">
-                <Lineups
-                  fixtureId={match.fixture.id}
-                  homeId={match.teams.home.id}
-                  awayId={match.teams.away.id}
-                />
+                <Lineups lineups={match.lineups} />
               </div>
             )}
             {activeTab === "timeline" && (
@@ -599,29 +592,26 @@ const FieldPlayers: React.FC<{
 
 function LiveMap({
   minute,
-  fixtureId,
-  homeId,
-  awayId,
+  lineups,
 }: {
   minute: number | null;
-  fixtureId: number;
-  homeId: number;
-  awayId: number;
+  lineups?: {
+    home: LineupTeam;
+    away: LineupTeam;
+  };
 }) {
-  const { lineups, loading } = useLineups(fixtureId, homeId, awayId);
-
-  if (loading) {
+  if (!lineups) {
     return (
       <div className="relative flex h-32 items-center justify-center overflow-hidden rounded-lg bg-[#16331e]">
         <div className="z-10 text-center text-xs text-white/70">
-          Cargando formaciones...
+          Formaciones no disponibles
         </div>
       </div>
     );
   }
 
-  const homeTeam = lineups?.[0];
-  const awayTeam = lineups?.[1];
+  const homeTeam = lineups.home;
+  const awayTeam = lineups.away;
 
   return (
     <div className="relative h-40 overflow-hidden rounded-lg bg-[#16331e]">

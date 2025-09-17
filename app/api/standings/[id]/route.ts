@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FootballApiServer } from "@/lib/footballApi";
+import { STATIC_LEAGUES } from "@/lib/leagues-data";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const leagueId = parseInt(params.id);
+    const { id } = await params;
+    const leagueId = parseInt(id);
 
     if (!leagueId || isNaN(leagueId)) {
       return NextResponse.json(
@@ -23,18 +24,21 @@ export async function GET(
       );
     }
 
-    const api = new FootballApiServer(apiKey);
+    // Use FootballApiServer for standings
+    const { FootballApiServer } = await import("@/lib/footballApi");
+    const externalApi = new FootballApiServer(apiKey);
 
-    // Obtener el año actual para la temporada
+    // Get current year for season
     const currentYear = new Date().getFullYear();
 
-    // Obtener standings
-    const standingsResponse = await api.getStandings(leagueId, currentYear);
+    console.log(
+      `📄 Fetching standings for league ${leagueId}, season ${currentYear}`
+    );
 
-    // Obtener información de la liga
-    const leaguesResponse = await api.getLeagues();
-    const leagueInfo = leaguesResponse.find(
-      (l: { league: { id: number } }) => l.league.id === leagueId
+    // Get standings from external API
+    const standingsResponse = await externalApi.getStandings(
+      leagueId,
+      currentYear
     );
 
     if (!standingsResponse || standingsResponse.length === 0) {
@@ -44,7 +48,10 @@ export async function GET(
       );
     }
 
-    // Formatear los datos
+    // Get league info from STATIC_LEAGUES
+    const leagueInfo = STATIC_LEAGUES.find(l => l.id === leagueId);
+
+    // Format the data
     const standings = standingsResponse[0]?.league?.standings?.[0] || [];
 
     const formattedStandings = standings.map(
@@ -81,10 +88,15 @@ export async function GET(
     );
 
     const league = {
-      id: leagueInfo?.league?.id || leagueId,
-      name: leagueInfo?.league?.name || `Liga ${leagueId}`,
-      logo: leagueInfo?.league?.logo || "",
-      country: leagueInfo?.country?.name || "",
+      id: standingsResponse[0]?.league?.id || leagueId,
+      name:
+        leagueInfo?.name ||
+        standingsResponse[0]?.league?.name ||
+        `Liga ${leagueId}`,
+      logo:
+        leagueInfo?.logo ||
+        `https://media.api-sports.io/football/leagues/${leagueId}.png`,
+      country: leagueInfo?.country || "",
       season: standingsResponse[0]?.league?.season || currentYear,
     };
 

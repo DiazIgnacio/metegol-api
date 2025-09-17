@@ -1,27 +1,23 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { FootballApiServer } from "@/lib/footballApi";
+import { STATIC_LEAGUES } from "@/lib/leagues-data";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const country = searchParams.get("country");
 
-    const apiKey = process.env.FOOTBALL_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Missing API key" }, { status: 500 });
-    }
-
-    const api = new FootballApiServer(apiKey);
+    // Use the static leagues from SubNavbar component
+    let leagues = STATIC_LEAGUES;
 
     if (country) {
-      const leagues = await api.getLeaguesByCountry(country);
-      return NextResponse.json({ leagues });
+      // Filter by country if requested
+      leagues = STATIC_LEAGUES.filter(
+        league => league.country.toLowerCase() === country.toLowerCase()
+      );
     }
 
-    // Sin filtro, devolver todas las ligas
-    const allLeagues = await api.getAllLeagues();
-    return NextResponse.json({ leagues: allLeagues });
+    return NextResponse.json({ leagues });
   } catch (error) {
     console.error("Leagues API Error:", error);
     return NextResponse.json(

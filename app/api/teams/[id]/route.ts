@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FootballApiServer } from "@/lib/footballApi";
+import { FastFootballApi } from "@/lib/client-api/FastFootballApi";
 
-const footballApi = new FootballApiServer(process.env.FOOTBALL_API_KEY!);
+// Global instance to avoid Firebase reinitialization
+let globalApi: FastFootballApi | null = null;
+
+function getApi(): FastFootballApi {
+  if (!globalApi) {
+    globalApi = new FastFootballApi();
+  }
+  return globalApi;
+}
 
 export async function GET(
   request: NextRequest,
@@ -12,37 +20,92 @@ export async function GET(
     const teamId = parseInt(id);
     const season = 2025;
 
-    // Get team matches from all leagues
-    const matches = await footballApi.getTeamAllMatches(teamId, season);
-
-    // Get team info from the first match (contains team data)
-    const teamInfo =
-      matches.length > 0
-        ? matches[0].teams.home.id === teamId
-          ? matches[0].teams.home
-          : matches[0].teams.away
-        : null;
-
-    if (!teamInfo) {
-      return NextResponse.json({ error: "Team not found" }, { status: 404 });
+    const apiKey = process.env.FOOTBALL_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "FOOTBALL_API_KEY not configured" },
+        { status: 500 }
+      );
     }
 
-    // Get match statistics for recent matches (only 10 to improve loading speed)
-    const recentMatches = matches.slice(0, 10);
+    // Use FootballApiServer for team matches
+    const { FootballApiServer } = await import("@/lib/footballApi");
+    const externalApi = new FootballApiServer(apiKey);
+
+    // Get team matches from all leagues using getTeamAllMatches
+    console.log(`📄 Fetching all matches for team ${teamId}, season ${season}`);
+    const allMatches = await externalApi.getTeamAllMatches(teamId, season);
+
+    if (!allMatches || allMatches.length === 0) {
+      return NextResponse.json({
+        team: {
+          id: teamId,
+          name: `Team ${teamId}`,
+          logo: `https://media.api-sports.io/football/teams/${teamId}.png`,
+        },
+        matches: [],
+        totalMatches: 0,
+      });
+    }
+
+    // Get team info from the first match
+    const firstMatch = allMatches[0];
+    const teamInfo =
+      firstMatch.teams.home.id === teamId
+        ? firstMatch.teams.home
+        : firstMatch.teams.away;
+
+    // Sort matches: upcoming first, then recent finished matches
+    const now = new Date();
+    const sortedMatches = allMatches.sort((a, b) => {
+      const dateA = new Date(a.fixture.date);
+      const dateB = new Date(b.fixture.date);
+
+      // Separate upcoming and past matches
+      const aIsUpcoming =
+        dateA > now || ["NS", "TBD", "PST"].includes(a.fixture.status.short);
+      const bIsUpcoming =
+        dateB > now || ["NS", "TBD", "PST"].includes(b.fixture.status.short);
+
+      if (aIsUpcoming && !bIsUpcoming) return -1;
+      if (!aIsUpcoming && bIsUpcoming) return 1;
+
+      // Within same category, sort by date
+      if (aIsUpcoming) {
+        return dateA.getTime() - dateB.getTime(); // Upcoming: earliest first
+      } else {
+        return dateB.getTime() - dateA.getTime(); // Past: most recent first
+      }
+    });
+
+    // Get detailed data for first 10 matches only (to improve performance)
+    const api = getApi();
+    const recentMatches = sortedMatches.slice(0, 10);
     const matchesWithStats = await Promise.all(
       recentMatches.map(async match => {
-        const stats = await footballApi.getMatchStats(match);
-        const events = await footballApi.getMatchEvents(match);
-        return {
-          ...match,
-          statistics: stats,
-          events: events,
-        };
+        try {
+          const [stats, events] = await Promise.all([
+            api.getMatchStats(match.fixture.id),
+            api.getMatchEvents(match.fixture.id),
+          ]);
+
+          return {
+            ...match,
+            statistics: stats,
+            events: events,
+          };
+        } catch (error) {
+          console.error(
+            `Error getting details for match ${match.fixture.id}:`,
+            error
+          );
+          return match; // Return match without detailed stats if there's an error
+        }
       })
     );
 
-    // Add stats and events to the first 10 matches, rest without detailed stats
-    const allMatchesWithSomeStats = matches.map((match, index) => {
+    // Combine detailed matches with the rest
+    const allMatchesWithSomeStats = sortedMatches.map((match, index) => {
       if (index < 10) {
         return matchesWithStats[index];
       }
@@ -52,7 +115,7 @@ export async function GET(
     return NextResponse.json({
       team: teamInfo,
       matches: allMatchesWithSomeStats,
-      totalMatches: matches.length,
+      totalMatches: allMatches.length,
     });
   } catch (error) {
     console.error("Error fetching team details:", error);

@@ -11,7 +11,21 @@
       "WebFetch(domain:v3.football.api-sports.io)",
       "WebSearch",
       "Bash(npx tsc:*)",
-      "WebFetch(domain:dashboard.api-football.com)"
+      "WebFetch(domain:dashboard.api-football.com)",
+      "Bash(yarn add:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "Bash(time curl:*)",
+      "Bash(pkill:*)",
+      "Bash(find:*)",
+      "Bash(timeout 15 yarn dev)",
+      "Bash(node:*)",
+      "Bash(npx tsx:*)",
+      "Bash(echo $NEXT_PUBLIC_BASE_URL)",
+      "Bash(taskkill:*)",
+      "Bash(yarn lint:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

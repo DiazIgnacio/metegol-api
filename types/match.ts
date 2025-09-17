@@ -125,6 +125,10 @@ export interface Match {
     home: TeamMatchEvents;
     away: TeamMatchEvents;
   };
+  lineups?: {
+    home: LineupTeam;
+    away: LineupTeam;
+  };
 }
 
 export interface LineupTeam {

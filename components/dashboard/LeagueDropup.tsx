@@ -22,6 +22,7 @@ export default function LeagueDropup({
 
   // Filtrar ligas por país seleccionado
   const filteredLeagues = useMemo(() => {
+    if (!leagues || !Array.isArray(leagues)) return [];
     if (!selectedCountry) return leagues;
     return leagues.filter(league => league.country === selectedCountry);
   }, [leagues, selectedCountry]);
@@ -60,7 +61,7 @@ export default function LeagueDropup({
   };
 
   const getDisplayText = () => {
-    if (selectedLeague) {
+    if (selectedLeague && leagues && Array.isArray(leagues)) {
       const league = leagues.find(l => l.id === selectedLeague);
       return league?.name || `Liga ${selectedLeague}`;
     }
