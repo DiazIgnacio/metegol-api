@@ -202,10 +202,19 @@ export class FootballApiServer {
         { team: { id: number }; statistics: TeamMatchStats }[]
       >("/fixtures/statistics", { fixture: match.fixture.id });
 
-      const home =
-        obj.find(x => x.team.id === match.teams.home.id)?.statistics ?? [];
-      const away =
-        obj.find(x => x.team.id === match.teams.away.id)?.statistics ?? [];
+      // If we don't have team info, use the team IDs from the response itself
+      let homeTeamId, awayTeamId;
+      if (match.teams?.home?.id && match.teams?.away?.id) {
+        homeTeamId = match.teams.home.id;
+        awayTeamId = match.teams.away.id;
+      } else {
+        // Fallback: use the first two teams from the response
+        homeTeamId = obj[0]?.team.id;
+        awayTeamId = obj[1]?.team.id;
+      }
+
+      const home = obj.find(x => x.team.id === homeTeamId)?.statistics ?? [];
+      const away = obj.find(x => x.team.id === awayTeamId)?.statistics ?? [];
 
       return { home, away };
     } catch (error) {
@@ -253,20 +262,20 @@ export class FootballApiServer {
         }>
       >("/fixtures/events", { fixture: match.fixture.id });
 
-      // Debug logging for problematic matches
+      // Debug logging for problematic matches (safely check if teams exist)
       if (
-        match.teams.home.name.includes("Kairat") ||
-        match.teams.home.name.includes("Celtic") ||
-        match.teams.away.name.includes("Kairat") ||
-        match.teams.away.name.includes("Celtic")
+        match.teams?.home?.name?.includes("Kairat") ||
+        match.teams?.home?.name?.includes("Celtic") ||
+        match.teams?.away?.name?.includes("Kairat") ||
+        match.teams?.away?.name?.includes("Celtic")
       ) {
         console.log(
-          `EVENTS API DEBUG for ${match.teams.home.name} vs ${match.teams.away.name}:`,
+          `EVENTS API DEBUG for ${match.teams?.home?.name || "Unknown"} vs ${match.teams?.away?.name || "Unknown"}:`,
           {
             fixtureId: match.fixture.id,
             totalEvents: events.length,
-            homeTeamId: match.teams.home.id,
-            awayTeamId: match.teams.away.id,
+            homeTeamId: match.teams?.home?.id,
+            awayTeamId: match.teams?.away?.id,
             allEvents: events.map(e => ({
               type: e.type,
               time: e.time.elapsed,
@@ -278,14 +287,29 @@ export class FootballApiServer {
         );
       }
 
+      // If we don't have team info, we need to determine teams from the events themselves
+      // Group events by team and assume there are only 2 teams (home and away)
+      const teamIds = [...new Set(events.map(e => e.team.id))];
+
+      let homeTeamId, awayTeamId;
+      if (match.teams?.home?.id && match.teams?.away?.id) {
+        // Use the team IDs from the match object if available
+        homeTeamId = match.teams.home.id;
+        awayTeamId = match.teams.away.id;
+      } else {
+        // Fallback: use the first two unique team IDs found in events
+        homeTeamId = teamIds[0];
+        awayTeamId = teamIds[1];
+      }
+
       const home = events
-        .filter(x => x.team.id === match.teams.home.id)
+        .filter(x => x.team.id === homeTeamId)
         .map(event => ({
           ...event,
           type: event.type as EventsKeys,
         }));
       const away = events
-        .filter(x => x.team.id === match.teams.away.id)
+        .filter(x => x.team.id === awayTeamId)
         .map(event => ({
           ...event,
           type: event.type as EventsKeys,

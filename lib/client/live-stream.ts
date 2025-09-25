@@ -205,3 +205,27 @@ export function useLiveMatches(leagueIds: number[]) {
 
 // For non-React usage
 import React from "react";
+
+/**
+ * Initialize live match detector when app starts - 2025 OPTIMIZATION
+ */
+export async function initializeLiveDetector(): Promise<void> {
+  if (typeof window === "undefined") {
+    try {
+      // Start live detector on server
+      const response = await fetch("/api/admin/live-detector", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start" }),
+      });
+
+      if (response.ok) {
+        console.log("✅ Live match detector initialized");
+      } else {
+        console.warn("⚠️ Failed to initialize live detector");
+      }
+    } catch (error) {
+      console.error("❌ Error initializing live detector:", error);
+    }
+  }
+}

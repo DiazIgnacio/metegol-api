@@ -1,10 +1,13 @@
 // Fast Football API - Reads only from Firebase (no external API calls)
 import { FirebaseCache } from "../firebase/cache";
+import { EventsValidator } from "./EventsValidator";
+import { ALL_NAVBAR_LEAGUES } from "@/lib/config/leagues";
 import { format, subDays } from "date-fns";
 import type { Match } from "@/types/match";
 
 export class FastFootballApi {
   private cache: FirebaseCache;
+  private eventsValidator: EventsValidator;
   private memoryCache: Map<
     string,
     { data: any; timestamp: number; ttl: number }
@@ -12,6 +15,7 @@ export class FastFootballApi {
 
   constructor() {
     this.cache = FirebaseCache.getInstance();
+    this.eventsValidator = new EventsValidator();
   }
 
   /**
@@ -80,10 +84,9 @@ export class FastFootballApi {
         }
       }
 
-      // FALLBACK: If no cached data found, fetch from external API
-      console.log(
-        `🔄 FALLBACK: No cached data for ${cacheKey}, fetching from external API...`
-      );
+      // No automatic fallback - return empty array if not in cache
+      console.log(`⚪ No cached fixtures found for ${cacheKey}`);
+      return [];
 
       try {
         // Import FootballApiServer dynamically to avoid circular imports
@@ -186,8 +189,9 @@ export class FastFootballApi {
 
         const externalApi = new FootballApiServer(apiKey);
 
-        // We need the match object to get stats, so we create a minimal one
-        const match = { fixture: { id: matchId } };
+        // We need the match object to get stats, but we only have the ID
+        // This method is deprecated, but for backwards compatibility we create a minimal match
+        const match = { fixture: { id: matchId }, teams: null };
         const externalData = await externalApi.getMatchStats(match as any);
 
         if (externalData) {
@@ -307,6 +311,165 @@ export class FastFootballApi {
       }
     } catch (error) {
       console.error("Error retrieving match events from cache:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get match events with team information preserved
+   */
+  async getMatchEventsWithTeamInfo(
+    match: any
+  ): Promise<{ home: any[]; away: any[] } | null> {
+    const cacheKey = `match_events_${match.fixture.id}`;
+
+    try {
+      const cached = await this.getCachedData<{ home: any[]; away: any[] }>(
+        cacheKey,
+        {}
+      );
+
+      if (cached) {
+        return cached;
+      }
+
+      // FALLBACK: If no cached data found, fetch from external API
+      console.log(
+        `🔄 FALLBACK EVENTS: No cached data for ${cacheKey}, fetching from external API...`
+      );
+
+      try {
+        // Import FootballApiServer dynamically to avoid circular imports
+        const { FootballApiServer } = await import("../footballApi");
+        const apiKey = process.env.FOOTBALL_API_KEY;
+
+        if (!apiKey) {
+          console.error("❌ FALLBACK EVENTS: FOOTBALL_API_KEY not found");
+          return null;
+        }
+
+        const externalApi = new FootballApiServer(apiKey);
+
+        // Pass the full match object to preserve team information for correct event assignment
+        const externalData = await externalApi.getMatchEvents(match);
+
+        if (externalData) {
+          console.log(
+            `✅ FALLBACK EVENTS: Found events for match ${match.fixture.id}, saving to cache...`
+          );
+
+          // Save to cache for future use
+          await this.cache.set(
+            "match_events",
+            { key: cacheKey },
+            externalData,
+            1440 // 24 hours TTL for match events
+          );
+
+          return externalData;
+        } else {
+          console.log(
+            `⚪ FALLBACK EVENTS: No events found for match ${match.fixture.id}`
+          );
+
+          // Cache null result to avoid repeated API calls
+          await this.cache.set(
+            "match_events",
+            { key: cacheKey },
+            null,
+            120 // 2 hours TTL for null results
+          );
+
+          return null;
+        }
+      } catch (fallbackError) {
+        console.error(
+          `❌ FALLBACK EVENTS ERROR for ${cacheKey}:`,
+          fallbackError
+        );
+        return null;
+      }
+    } catch (error) {
+      console.error("Error retrieving match events from cache:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get match stats with team information preserved
+   */
+  async getMatchStatsWithMatchInfo(
+    match: any
+  ): Promise<{ home: any[]; away: any[] } | null> {
+    const cacheKey = `match_stats_${match.fixture.id}`;
+
+    try {
+      // Try to get from cache first
+      const cached = await this.getCachedData<{ home: any[]; away: any[] }>(
+        cacheKey,
+        {}
+      );
+
+      if (cached) {
+        return cached;
+      }
+
+      // If not in cache, call external API with full match object
+      console.log(
+        `🔄 FALLBACK STATS: No cached data for ${cacheKey}, fetching from external API...`
+      );
+
+      try {
+        const apiKey = process.env.FOOTBALL_API_KEY;
+
+        if (!apiKey) {
+          console.error("❌ FALLBACK STATS: FOOTBALL_API_KEY not found");
+          return null;
+        }
+
+        const { FootballApiServer } = await import("../footballApi");
+        const externalApi = new FootballApiServer(apiKey);
+        // Pass the full match object with team information
+        const externalData = await externalApi.getMatchStats(match);
+
+        if (externalData) {
+          console.log(
+            `✅ FALLBACK STATS: Found stats for match ${match.fixture.id}, saving to cache...`
+          );
+
+          // Save to cache for future use
+          await this.cache.set(
+            "match_stats",
+            { key: cacheKey },
+            externalData,
+            1440 // 24 hours TTL for match stats
+          );
+
+          return externalData;
+        } else {
+          console.log(
+            `⚪ FALLBACK STATS: No stats found for match ${match.fixture.id}`
+          );
+
+          // Cache null result to avoid repeated API calls
+          await this.cache.set(
+            "match_stats",
+            { key: cacheKey },
+            null,
+            120 // 2 hours TTL for null results
+          );
+
+          return null;
+        }
+      } catch (fallbackError) {
+        console.error(
+          `❌ FALLBACK STATS ERROR for ${cacheKey}:`,
+          fallbackError
+        );
+        return null;
+      }
+    } catch (error) {
+      console.error("Error retrieving match stats from cache:", error);
       return null;
     }
   }
@@ -521,26 +684,7 @@ export class FastFootballApi {
    */
   async getTodaysMatches(leagueIds?: number[]): Promise<Match[]> {
     const today = format(new Date(), "yyyy-MM-dd");
-    const defaultLeagues = [
-      128,
-      129,
-      130, // Argentina (Liga Profesional, Primera Nacional, Copa Argentina)
-      2,
-      3,
-      848, // UEFA (Champions, Europa, Conference)
-      140,
-      39,
-      135,
-      78,
-      61, // Top 5 European leagues
-      13,
-      11, // CONMEBOL (Libertadores, Sudamericana)
-      71,
-      73, // Brazil (Brasileirão A, Copa do Brasil)
-      15, // Mundial de Clubes
-    ];
-
-    const leagues = leagueIds || defaultLeagues;
+    const leagues = leagueIds || [...ALL_NAVBAR_LEAGUES];
     return this.getMultipleLeaguesFixtures(today, leagues);
   }
 
@@ -550,26 +694,7 @@ export class FastFootballApi {
   async getRecentMatches(leagueIds?: number[]): Promise<Match[]> {
     const today = format(new Date(), "yyyy-MM-dd");
     const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
-    const defaultLeagues = [
-      128,
-      129,
-      130, // Argentina (Liga Profesional, Primera Nacional, Copa Argentina)
-      2,
-      3,
-      848, // UEFA (Champions, Europa, Conference)
-      140,
-      39,
-      135,
-      78,
-      61, // Top 5 European leagues
-      13,
-      11, // CONMEBOL (Libertadores, Sudamericana)
-      71,
-      73, // Brazil (Brasileirão A, Copa do Brasil)
-      15, // Mundial de Clubes
-    ];
-
-    const leagues = leagueIds || defaultLeagues;
+    const leagues = leagueIds || [...ALL_NAVBAR_LEAGUES];
 
     const [todayMatches, yesterdayMatches] = await Promise.all([
       this.getMultipleLeaguesFixtures(today, leagues),
@@ -594,6 +719,9 @@ export class FastFootballApi {
    * Get matches with full details (stats, events, lineups) - OPTIMIZED
    */
   async getMatchesWithDetails(matches: Match[]): Promise<Match[]> {
+    console.log(
+      `🔍 getMatchesWithDetails called with ${matches.length} matches`
+    );
     if (matches.length === 0) return matches;
 
     // Get all match IDs that need details
@@ -613,7 +741,16 @@ export class FastFootballApi {
       ].includes(match.fixture.status.short)
     );
 
+    console.log(
+      `🔍 Found ${detailedMatches.length} matches that need details:`,
+      detailedMatches.map(
+        m =>
+          `${m.teams.home.name} vs ${m.teams.away.name} (${m.fixture.status.short})`
+      )
+    );
+
     if (detailedMatches.length === 0) {
+      console.log(`⚠️ No matches need details, returning original matches`);
       return matches;
     }
 
@@ -657,30 +794,43 @@ export class FastFootballApi {
       };
     });
 
-    return enrichedMatches;
+    // VALIDATE AND FIX EVENTS: Check for inconsistent events and fix automatically
+    console.log(
+      `🔧 EVENTS VALIDATION: Checking ${enrichedMatches.length} matches for event consistency`
+    );
+    const validatedMatches = await this.eventsValidator.bulkFixMatches(
+      enrichedMatches,
+      (matchId: number) => this.getMatchEvents(matchId)
+    );
+
+    return validatedMatches;
   }
 
   /**
    * Batch get stats for multiple matches - OPTIMIZED
    */
   private async getBatchStats(matches: Match[]): Promise<Record<string, any>> {
+    console.log(`📊 getBatchStats called for ${matches.length} matches`);
     const results: Record<string, any> = {};
 
-    // Get all cache keys at once
-    const cacheKeys = matches.map(match => `match_stats_${match.fixture.id}`);
-
     try {
-      // Batch get all stats in parallel
+      // Use getMatchStatsWithMatchInfo for each match (which includes fallback logic)
       const batchResults = await Promise.all(
-        cacheKeys.map(async (key, index) => {
+        matches.map(async match => {
           try {
-            const matchId = matches[index].fixture.id;
-            const cached = await this.getCachedData<any>(key, {});
-            return { matchId: matchId.toString(), data: cached };
+            const stats = await this.getMatchStatsWithMatchInfo(match);
+            console.log(
+              `📊 Stats result for match ${match.fixture.id}:`,
+              stats ? "FOUND" : "NOT FOUND"
+            );
+            return { matchId: match.fixture.id.toString(), data: stats };
           } catch (error) {
-            console.error(`Error getting stats cache for ${key}:`, error);
+            console.error(
+              `Error getting stats for match ${match.fixture.id}:`,
+              error
+            );
             return {
-              matchId: matches[index].fixture.id.toString(),
+              matchId: match.fixture.id.toString(),
               data: null,
             };
           }
@@ -693,6 +843,10 @@ export class FastFootballApi {
           results[result.matchId] = result.data;
         }
       });
+
+      console.log(
+        `📊 getBatchStats found ${Object.keys(results).length} matches with stats`
+      );
     } catch (error) {
       console.error("Error in batch stats retrieval:", error);
     }
@@ -704,23 +858,28 @@ export class FastFootballApi {
    * Batch get events for multiple matches - OPTIMIZED
    */
   private async getBatchEvents(matches: Match[]): Promise<Record<string, any>> {
+    console.log(`🎯 getBatchEvents called for ${matches.length} matches`);
     const results: Record<string, any> = {};
 
-    // Get all cache keys at once
-    const cacheKeys = matches.map(match => `match_events_${match.fixture.id}`);
-
     try {
-      // Batch get all events in parallel
+      // Use getMatchEvents for each match (which includes fallback logic)
       const batchResults = await Promise.all(
-        cacheKeys.map(async (key, index) => {
+        matches.map(async match => {
           try {
-            const matchId = matches[index].fixture.id;
-            const cached = await this.getCachedData<any>(key, {});
-            return { matchId: matchId.toString(), data: cached };
+            // Pass the full match object to preserve team info for correct event assignment
+            const events = await this.getMatchEventsWithTeamInfo(match);
+            console.log(
+              `🎯 Events result for match ${match.fixture.id}:`,
+              events ? "FOUND" : "NOT FOUND"
+            );
+            return { matchId: match.fixture.id.toString(), data: events };
           } catch (error) {
-            console.error(`Error getting events cache for ${key}:`, error);
+            console.error(
+              `Error getting events for match ${match.fixture.id}:`,
+              error
+            );
             return {
-              matchId: matches[index].fixture.id.toString(),
+              matchId: match.fixture.id.toString(),
               data: null,
             };
           }
@@ -733,6 +892,10 @@ export class FastFootballApi {
           results[result.matchId] = result.data;
         }
       });
+
+      console.log(
+        `🎯 getBatchEvents found ${Object.keys(results).length} matches with events`
+      );
     } catch (error) {
       console.error("Error in batch events retrieval:", error);
     }
@@ -746,6 +909,7 @@ export class FastFootballApi {
   private async getBatchLineups(
     matches: Match[]
   ): Promise<Record<string, any>> {
+    console.log(`⚽ getBatchLineups called for ${matches.length} matches`);
     const results: Record<string, any> = {};
 
     // Filter matches that can have lineups
@@ -753,26 +917,32 @@ export class FastFootballApi {
       match => match.fixture.status.short !== "NS"
     );
 
+    console.log(`⚽ Found ${validMatches.length} valid matches for lineups`);
+
     if (validMatches.length === 0) return results;
 
-    // Get all cache keys at once
-    const cacheKeys = validMatches.map(
-      match =>
-        `lineups_${match.fixture.id}_${match.teams.home.id}_${match.teams.away.id}`
-    );
-
     try {
-      // Batch get all lineups in parallel
+      // Use getMatchLineups for each match (which includes fallback logic)
       const batchResults = await Promise.all(
-        cacheKeys.map(async (key, index) => {
+        validMatches.map(async match => {
           try {
-            const matchId = validMatches[index].fixture.id;
-            const cached = await this.getCachedData<any>(key, {});
-            return { matchId: matchId.toString(), data: cached };
+            const lineups = await this.getMatchLineups(
+              match.fixture.id.toString(),
+              match.teams.home.id.toString(),
+              match.teams.away.id.toString()
+            );
+            console.log(
+              `⚽ Lineups result for match ${match.fixture.id}:`,
+              lineups ? "FOUND" : "NOT FOUND"
+            );
+            return { matchId: match.fixture.id.toString(), data: lineups };
           } catch (error) {
-            console.error(`Error getting lineups cache for ${key}:`, error);
+            console.error(
+              `Error getting lineups for match ${match.fixture.id}:`,
+              error
+            );
             return {
-              matchId: validMatches[index].fixture.id.toString(),
+              matchId: match.fixture.id.toString(),
               data: null,
             };
           }
@@ -785,6 +955,10 @@ export class FastFootballApi {
           results[result.matchId] = result.data;
         }
       });
+
+      console.log(
+        `⚽ getBatchLineups found ${Object.keys(results).length} matches with lineups`
+      );
     } catch (error) {
       console.error("Error in batch lineups retrieval:", error);
     }
@@ -830,26 +1004,7 @@ export class FastFootballApi {
    */
   async getLiveMatches(leagueIds?: number[]): Promise<Match[]> {
     const today = format(new Date(), "yyyy-MM-dd");
-    const defaultLeagues = [
-      128,
-      129,
-      130, // Argentina (Liga Profesional, Primera Nacional, Copa Argentina)
-      2,
-      3,
-      848, // UEFA (Champions, Europa, Conference)
-      140,
-      39,
-      135,
-      78,
-      61, // Top 5 European leagues
-      13,
-      11, // CONMEBOL (Libertadores, Sudamericana)
-      71,
-      73, // Brazil (Brasileirão A, Copa do Brasil)
-      15, // Mundial de Clubes
-    ];
-
-    const leagues = leagueIds || defaultLeagues;
+    const leagues = leagueIds || [...ALL_NAVBAR_LEAGUES];
     const allMatches = await this.getMultipleLeaguesFixtures(today, leagues);
 
     // Filter only live matches

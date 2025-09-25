@@ -145,10 +145,15 @@ export class FirebaseCache {
   }
 }
 
-// TTL constants (in minutes)
+// TTL constants (in minutes) - OPTIMIZED for 2025
 export const CACHE_TTL = {
-  // Live matches - very short TTL
-  LIVE_FIXTURES: 2,
+  // Live matches - ultra short TTL for real-time updates
+  LIVE_FIXTURES: 1, // 1 minute for live matches
+  LIVE_STATS: 1, // 1 minute for live stats
+  LIVE_EVENTS: 1, // 1 minute for live events
+
+  // Recent finished matches (within last 2 hours) - short TTL
+  RECENTLY_FINISHED: 30, // 30 minutes
 
   // Future matches - moderate TTL
   FUTURE_FIXTURES: 120, // 2 hours
@@ -162,40 +167,101 @@ export const CACHE_TTL = {
   LINEUPS: 43200, // 30 days
 
   // Match details based on status
-  LIVE_STATS: 2,
-  LIVE_EVENTS: 2,
   FINISHED_STATS: 1440, // 24 hours
   FINISHED_EVENTS: 1440, // 24 hours
 } as const;
 
 /**
- * Calculate dynamic TTL based on match status and date
+ * Calculate dynamic TTL based on match status and date - ENHANCED for 2025
  */
 export function calculateDynamicTTL(matches: Match[]): number {
   if (!matches.length) return CACHE_TTL.FUTURE_FIXTURES;
 
   const now = new Date();
-  const hasLiveMatches = matches.some(
-    match =>
-      match.fixture?.status?.short === "1H" ||
-      match.fixture?.status?.short === "2H" ||
-      match.fixture?.status?.short === "HT"
+  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+
+  // Check for live matches first (highest priority)
+  const hasLiveMatches = matches.some(match =>
+    ["1H", "2H", "HT", "LIVE", "ET", "P"].includes(
+      match.fixture?.status?.short || ""
+    )
   );
 
   if (hasLiveMatches) {
+    console.log(
+      `🔴 LIVE TTL: Using ${CACHE_TTL.LIVE_FIXTURES} minutes for live matches`
+    );
     return CACHE_TTL.LIVE_FIXTURES;
   }
 
-  // Check if matches are in the past
+  // Check for recently finished matches (within last 2 hours)
+  const hasRecentlyFinished = matches.some(match => {
+    if (!match.fixture?.date) return false;
+    const matchDate = new Date(match.fixture.date);
+    return (
+      matchDate > twoHoursAgo &&
+      ["FT", "AET", "PEN", "AWD", "WO"].includes(
+        match.fixture?.status?.short || ""
+      )
+    );
+  });
+
+  if (hasRecentlyFinished) {
+    console.log(
+      `⏰ RECENT TTL: Using ${CACHE_TTL.RECENTLY_FINISHED} minutes for recently finished matches`
+    );
+    return CACHE_TTL.RECENTLY_FINISHED;
+  }
+
+  // Check if matches are in the past (long cache)
   const allPast = matches.every(match => {
     if (!match.fixture?.date) return false;
     const matchDate = new Date(match.fixture.date);
-    return matchDate < now;
+    return matchDate < twoHoursAgo;
   });
 
   if (allPast) {
+    console.log(
+      `📚 PAST TTL: Using ${CACHE_TTL.PAST_FIXTURES} minutes for past matches`
+    );
     return CACHE_TTL.PAST_FIXTURES;
   }
 
+  // Future matches
+  console.log(
+    `🔮 FUTURE TTL: Using ${CACHE_TTL.FUTURE_FIXTURES} minutes for future matches`
+  );
+  return CACHE_TTL.FUTURE_FIXTURES;
+}
+
+/**
+ * Get TTL for individual match based on its status - NEW for 2025
+ */
+export function getMatchTTL(match: Match): number {
+  const status = match.fixture?.status?.short || "NS";
+  const now = new Date();
+  const matchDate = new Date(match.fixture?.date || now);
+  const timeSinceMatch = now.getTime() - matchDate.getTime();
+  const twoHours = 2 * 60 * 60 * 1000;
+
+  // Live matches - very short TTL
+  if (["1H", "2H", "HT", "LIVE", "ET", "P"].includes(status)) {
+    return CACHE_TTL.LIVE_FIXTURES;
+  }
+
+  // Recently finished matches (within 2 hours)
+  if (
+    ["FT", "AET", "PEN", "AWD", "WO"].includes(status) &&
+    timeSinceMatch < twoHours
+  ) {
+    return CACHE_TTL.RECENTLY_FINISHED;
+  }
+
+  // Old finished matches
+  if (["FT", "AET", "PEN", "AWD", "WO"].includes(status)) {
+    return CACHE_TTL.PAST_FIXTURES;
+  }
+
+  // Future matches
   return CACHE_TTL.FUTURE_FIXTURES;
 }

@@ -136,7 +136,7 @@ export default function SimpleMatchCard({ match }: Props) {
   const home = match.teams.home;
   const away = match.teams.away;
 
-  const isLive = ["1H", "2H", "LIVE", "ET", "P"].includes(
+  const isLive = ["1H", "2H", "HT", "LIVE", "ET", "P"].includes(
     match.fixture.status.short
   );
   const isFinished = ["FT", "AET", "PEN"].includes(match.fixture.status.short);
@@ -200,6 +200,11 @@ export default function SimpleMatchCard({ match }: Props) {
 
   const formatTime = () => {
     if (isLive) {
+      // Handle halftime specifically
+      if (match.fixture.status.short === "HT") {
+        return "MEDIO TIEMPO";
+      }
+
       const minute = match.fixture.status.elapsed;
       if (minute !== null && minute !== undefined) {
         return `${minute}'`;
@@ -473,6 +478,8 @@ export default function SimpleMatchCard({ match }: Props) {
                     side: "away" as const,
                   })),
                 ]}
+                homeTeam={{ name: match.teams.home.name }}
+                awayTeam={{ name: match.teams.away.name }}
               />
             )}
           </div>
@@ -685,7 +692,24 @@ function translateEventType(type?: string): string {
   return translations[type || ""] || type || "";
 }
 
-function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
+type TimelineEvent = {
+  time?: { elapsed?: number };
+  type?: string;
+  detail?: string;
+  player?: { name?: string };
+  side?: string;
+  team?: { name?: string };
+};
+
+function Timeline({
+  events,
+  homeTeam,
+  awayTeam,
+}: {
+  events: Array<Record<string, unknown>>;
+  homeTeam?: { name: string };
+  awayTeam?: { name: string };
+}) {
   if (!events.length) {
     return (
       <div className="py-4 text-center text-xs text-white/50">
@@ -695,39 +719,104 @@ function Timeline({ events }: { events: Array<Record<string, unknown>> }) {
   }
 
   const sorted = events.sort((a, b) => {
-    const aTime = (a as { time?: { elapsed?: number } })?.time?.elapsed ?? 0;
-    const bTime = (b as { time?: { elapsed?: number } })?.time?.elapsed ?? 0;
+    const aTime = (a as TimelineEvent)?.time?.elapsed ?? 0;
+    const bTime = (b as TimelineEvent)?.time?.elapsed ?? 0;
     return aTime - bTime;
   });
 
   return (
-    <div className="max-h-40 space-y-2 overflow-y-auto">
-      {sorted.map((event, i) => {
-        const e = event as {
-          time?: { elapsed?: number };
-          type?: string;
-          detail?: string;
-          player?: { name?: string };
-          side?: string;
-        };
+    <div className="w-full">
+      {/* Header with team names */}
+      <div className="mb-4 flex items-center justify-between rounded border border-[#444] bg-[#1a1a1a] p-3">
+        <div className="flex-1 text-center">
+          <span className="text-sm font-semibold text-blue-400">
+            {homeTeam?.name || "EQUIPO A"}
+          </span>
+        </div>
+        <div className="px-4">
+          <span className="text-xs text-white/60">-</span>
+        </div>
+        <div className="flex-1 text-center">
+          <span className="text-sm font-semibold text-red-400">
+            {awayTeam?.name || "EQUIPO B"}
+          </span>
+        </div>
+      </div>
 
-        const translatedType = translateEventType(e?.type);
+      {/* Events List */}
+      <div className="max-h-64 space-y-1 overflow-y-auto rounded border border-[#444] bg-[#1a1a1a] p-3">
+        {sorted.map((event, i) => {
+          const e = event as TimelineEvent;
+          const translatedType = translateEventType(e?.type);
+          const eventIcon = getEventIcon(e?.type, e?.detail);
+          const isHome = e?.side === "home";
 
-        return (
-          <div
-            key={i}
-            className="flex items-center justify-between space-x-2 border-b border-white/10 py-1 text-xs text-white/75"
-          >
-            <span className="w-8 text-white/60">
-              {e?.time?.elapsed ?? "—"}&quot;
-            </span>
-            <span className="mx-2 flex-1">| {translatedType}</span>
-            <span className="max-w-[100px] truncate text-right text-white/80">
-              {e?.player?.name ?? "—"}
-            </span>
-          </div>
-        );
-      })}
+          return (
+            <div
+              key={i}
+              className={`flex items-center justify-between rounded p-2 text-xs transition-colors hover:bg-[#2a2a2a] ${
+                isHome ? "bg-blue-500/5" : "bg-red-500/5"
+              }`}
+            >
+              {/* Left side - Home team event or empty */}
+              <div className="flex-1">
+                {isHome ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{eventIcon}</span>
+                    <span className="font-medium text-blue-300">
+                      {translatedType}
+                    </span>
+                    <span className="text-white/60">-</span>
+                    <span className="font-bold text-white">
+                      ({e?.time?.elapsed}&apos;)
+                    </span>
+                    <span className="truncate text-white/80">
+                      ({e?.player?.name})
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Center divider */}
+              <div className="mx-4 h-4 w-px bg-white/20"></div>
+
+              {/* Right side - Away team event or empty */}
+              <div className="flex-1">
+                {!isHome ? (
+                  <div className="flex items-center justify-end gap-2">
+                    <span className="truncate text-white/80">
+                      ({e?.player?.name})
+                    </span>
+                    <span className="font-bold text-white">
+                      ({e?.time?.elapsed}&apos;)
+                    </span>
+                    <span className="text-white/60">-</span>
+                    <span className="font-medium text-red-300">
+                      {translatedType}
+                    </span>
+                    <span className="text-lg">{eventIcon}</span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
+}
+
+function getEventIcon(type?: string, detail?: string): string {
+  if (type === "Goal") {
+    if (detail === "Own Goal") return "🥅";
+    if (detail === "Penalty") return "⚽";
+    return "⚽";
+  }
+  if (type === "Card") {
+    if (detail?.includes("Yellow")) return "🟨";
+    if (detail?.includes("Red")) return "🟥";
+    return "🟨";
+  }
+  if (type === "subst") return "🔄";
+  return "📋";
 }

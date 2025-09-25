@@ -198,72 +198,109 @@ export class BackgroundSync {
   }
 
   /**
-   * Calculate TTL for fixtures based on match dates and status
+   * Calculate TTL for fixtures based on match dates and status - OPTIMIZED 2025
    */
   private calculateTTL(matches: Match[]): number {
-    if (!matches || matches.length === 0) return 3600; // 1 hour default
+    if (!matches || matches.length === 0) return 60; // 1 hour default
 
     const now = new Date();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const hasFinishedMatches = matches.some(match =>
-      ["FT", "AET", "PEN", "AWD", "WO"].includes(match.fixture.status.short)
-    );
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
     const hasLiveMatches = matches.some(match =>
       ["1H", "2H", "LIVE", "ET", "P", "HT"].includes(match.fixture.status.short)
     );
+
+    const hasRecentlyFinished = matches.some(match => {
+      const matchDate = new Date(match.fixture.date);
+      return (
+        matchDate > twoHoursAgo &&
+        ["FT", "AET", "PEN", "AWD", "WO"].includes(match.fixture.status.short)
+      );
+    });
 
     const hasFutureMatches = matches.some(match => {
       const matchDate = new Date(match.fixture.date);
       return matchDate > now && match.fixture.status.short === "NS";
     });
 
-    const hasPastMatches = matches.some(match => {
+    const hasOldMatches = matches.some(match => {
       const matchDate = new Date(match.fixture.date);
-      matchDate.setHours(0, 0, 0, 0);
       return (
-        matchDate < today &&
+        matchDate < twoHoursAgo &&
         ["FT", "AET", "PEN", "AWD", "WO"].includes(match.fixture.status.short)
       );
     });
 
-    // Past finished matches - long cache (30 days)
-    if (hasPastMatches) return 2592000; // 30 days
+    // Live matches - ultra short cache (1 minute) for real-time updates
+    if (hasLiveMatches) {
+      console.log(`🔴 LIVE MATCHES: Setting 1 minute TTL for live matches`);
+      return 1; // 1 minute in minutes (converted to seconds later)
+    }
 
-    // Today's finished matches - medium cache (24 hours)
-    if (hasFinishedMatches && !hasLiveMatches) return 86400; // 24 hours
+    // Recently finished matches - short cache (30 minutes)
+    if (hasRecentlyFinished) {
+      console.log(`⏰ RECENTLY FINISHED: Setting 30 minute TTL`);
+      return 30; // 30 minutes
+    }
 
-    // Live matches - short cache (5 minutes)
-    if (hasLiveMatches) return 300; // 5 minutes
+    // Old finished matches - long cache (24 hours)
+    if (hasOldMatches) {
+      console.log(`📚 OLD MATCHES: Setting 24 hour TTL`);
+      return 1440; // 24 hours
+    }
 
     // Future matches - medium cache (2 hours)
-    if (hasFutureMatches) return 7200; // 2 hours
+    if (hasFutureMatches) {
+      console.log(`🔮 FUTURE MATCHES: Setting 2 hour TTL`);
+      return 120; // 2 hours
+    }
 
     // Default - 1 hour
-    return 3600;
+    return 60;
   }
 
   /**
-   * Calculate TTL for match details (stats, events)
+   * Calculate TTL for match details (stats, events) - OPTIMIZED 2025
    */
   private calculateDetailsTTL(match: Match): number {
-    const isLive = ["1H", "2H", "LIVE", "ET", "P", "HT"].includes(
-      match.fixture.status.short
-    );
-    const isFinished = ["FT", "AET", "PEN", "AWD", "WO"].includes(
-      match.fixture.status.short
-    );
+    const status = match.fixture.status.short;
+    const now = new Date();
+    const matchDate = new Date(match.fixture.date);
+    const timeSinceMatch = now.getTime() - matchDate.getTime();
+    const twoHours = 2 * 60 * 60 * 1000;
 
-    // Live matches - short cache
-    if (isLive) return 300; // 5 minutes
+    const isLive = ["1H", "2H", "LIVE", "ET", "P", "HT"].includes(status);
+    const isRecentlyFinished =
+      ["FT", "AET", "PEN", "AWD", "WO"].includes(status) &&
+      timeSinceMatch < twoHours;
+    const isOldFinished =
+      ["FT", "AET", "PEN", "AWD", "WO"].includes(status) &&
+      timeSinceMatch >= twoHours;
 
-    // Finished matches - long cache
-    if (isFinished) return 86400; // 24 hours
+    // Live matches - ultra short cache (1 minute)
+    if (isLive) {
+      console.log(
+        `🔴 LIVE DETAILS: Setting 1 minute TTL for live match details`
+      );
+      return 1; // 1 minute
+    }
 
-    // Default
-    return 3600; // 1 hour
+    // Recently finished matches - short cache (30 minutes)
+    if (isRecentlyFinished) {
+      console.log(
+        `⏰ RECENT DETAILS: Setting 30 minute TTL for recently finished match details`
+      );
+      return 30; // 30 minutes
+    }
+
+    // Old finished matches - long cache (24 hours)
+    if (isOldFinished) {
+      console.log(`📚 OLD DETAILS: Setting 24 hour TTL for old match details`);
+      return 1440; // 24 hours
+    }
+
+    // Default - 1 hour
+    return 60;
   }
 
   /**

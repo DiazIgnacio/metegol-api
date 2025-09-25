@@ -10,22 +10,46 @@ import { Match, League } from "@/types/match";
 import { FootballApi } from "@/lib/footballApi";
 import { format } from "date-fns";
 import { STATIC_LEAGUES } from "@/lib/leagues-data";
+import { PRIORITY_LEAGUES } from "@/lib/config/leagues";
 import GiftBanner from "./GiftBanner";
 
 interface Props {
   initialMatches?: Match[];
 }
 
-const DEFAULT_LEAGUES = [128, 129, 130, 2, 3, 848, 15];
+// Usamos las ligas prioritarias que incluyen Libertadores y todas las principales
+const DEFAULT_LEAGUES = [...PRIORITY_LEAGUES];
 
 const leagueNames: Record<number, string> = {
+  // Argentina
   128: "Liga Profesional de Futbol",
   129: "Primera Nacional",
   130: "Copa Argentina",
+  131: "Copa de la Liga",
+  // UEFA
   2: "Champions League",
   3: "Europa League",
   848: "Conference League",
+  // Top European
+  140: "La Liga",
+  39: "Premier League",
+  135: "Serie A",
+  78: "Bundesliga",
+  61: "Ligue 1",
+  // CONMEBOL
+  13: "Copa Libertadores", // ¡Incluida!
+  11: "Copa Sudamericana",
+  // Brazil
+  71: "Brasileirão",
+  73: "Copa do Brasil",
+  // Mexico/USA
+  262: "Liga MX",
+  253: "MLS",
+  // World
   15: "Mundial Clubes",
+  1: "Copa del Mundo",
+  4: "Eurocopa",
+  9: "Copa América",
 };
 
 // Lista de países con sus flags

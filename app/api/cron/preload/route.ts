@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BackgroundSync } from "@/lib/background-sync/background-sync";
+import { PRIORITY_LEAGUES } from "@/lib/config/leagues";
 import { format, addDays } from "date-fns";
 
 // Global instance to avoid reinitialization
@@ -27,9 +28,9 @@ export async function GET(request: NextRequest) {
 
     console.log("🚀 Starting automated preload job...");
 
-    // Configuración: precargar próximos 14 días para ligas principales
+    // Configuración: precargar próximos 14 días para ligas prioritarias (organizadas por popularidad)
     const days = 14;
-    const leagues = [128, 129, 130, 2, 3, 848, 15];
+    const leagues = [...PRIORITY_LEAGUES];
 
     const preloadPromises = [];
     let successful = 0;
@@ -128,9 +129,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔧 Manual preload triggered: ${days} days, force=${force}`);
 
-    // Ligas por defecto
-    const defaultLeagues = [128, 129, 130, 2, 3, 848, 15];
-    const targetLeagues = leagues || defaultLeagues;
+    // Ligas prioritarias por defecto (organizadas por popularidad)
+    const targetLeagues = leagues || [...PRIORITY_LEAGUES];
 
     const preloadPromises = [];
     let successful = 0;

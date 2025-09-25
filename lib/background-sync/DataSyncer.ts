@@ -1,6 +1,7 @@
 // Background Data Syncer - Syncs external API data to Firebase
 import { FootballApiServer } from "../footballApi";
 import { FirebaseCache } from "../firebase/cache";
+import { ALL_NAVBAR_LEAGUES } from "@/lib/config/leagues";
 import { format, subDays, addDays } from "date-fns";
 import type { Match } from "@/types/match";
 
@@ -38,25 +39,8 @@ export class DataSyncer {
     dataItemsSynced: 0,
   };
 
-  // Priority leagues to sync (most active/popular)
-  private defaultLeagues = [
-    128,
-    129,
-    130, // Argentina (Liga Profesional, Primera Nacional, Copa Argentina)
-    2,
-    3,
-    848, // UEFA (Champions, Europa, Conference)
-    140,
-    39,
-    135,
-    78,
-    61, // Top 5 European leagues
-    13,
-    11, // CONMEBOL (Libertadores, Sudamericana)
-    71,
-    73, // Brazil (Brasileirão A, Copa do Brasil)
-    15, // Mundial de Clubes
-  ];
+  // Priority leagues to sync - ALL leagues from navbar
+  private defaultLeagues = [...ALL_NAVBAR_LEAGUES];
 
   constructor(apiKey: string) {
     this.api = new FootballApiServer(apiKey);
@@ -494,40 +478,63 @@ export class DataSyncer {
   }
 
   /**
-   * Calculate appropriate TTL based on data type and match status
+   * Calculate appropriate TTL based on data type and match status - OPTIMIZED 2025
    */
-  private calculateTTL(matches: Match[], _dataType: string): number {
+  private calculateTTL(matches: Match[], dataType: string): number {
     if (!matches || matches.length === 0) return 60; // 1 hour default
 
-    const hasFinishedMatches = matches.some(match =>
-      ["FT", "AET", "PEN", "AWD", "WO"].includes(match.fixture.status.short)
-    );
+    const now = new Date();
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
     const hasLiveMatches = matches.some(match =>
       ["1H", "2H", "LIVE", "ET", "P", "HT"].includes(match.fixture.status.short)
     );
 
-    const hasPastMatches = matches.some(match => {
+    const hasRecentlyFinished = matches.some(match => {
       const matchDate = new Date(match.fixture.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       return (
-        matchDate < today &&
+        matchDate > twoHoursAgo &&
         ["FT", "AET", "PEN", "AWD", "WO"].includes(match.fixture.status.short)
       );
     });
 
-    // Past finished matches - 30 days
-    if (hasPastMatches) return 43200;
+    const hasOldMatches = matches.some(match => {
+      const matchDate = new Date(match.fixture.date);
+      return (
+        matchDate < twoHoursAgo &&
+        ["FT", "AET", "PEN", "AWD", "WO"].includes(match.fixture.status.short)
+      );
+    });
 
-    // Today's finished matches - long cache
-    if (hasFinishedMatches && !hasLiveMatches) return 1440; // 24 hours
+    // Live matches - ultra short cache (1 minute) for real-time updates
+    if (hasLiveMatches) {
+      console.log(
+        `🔴 ${dataType.toUpperCase()}: Setting 1 minute TTL for live matches`
+      );
+      return 1; // 1 minute
+    }
 
-    // Live matches - short cache
-    if (hasLiveMatches) return 5; // 5 minutes
+    // Recently finished matches - short cache (30 minutes)
+    if (hasRecentlyFinished) {
+      console.log(
+        `⏰ ${dataType.toUpperCase()}: Setting 30 minute TTL for recently finished`
+      );
+      return 30; // 30 minutes
+    }
 
-    // Future matches - medium cache
-    return 60; // 1 hour
+    // Old finished matches - long cache (24 hours)
+    if (hasOldMatches) {
+      console.log(
+        `📚 ${dataType.toUpperCase()}: Setting 24 hour TTL for old matches`
+      );
+      return 1440; // 24 hours
+    }
+
+    // Future matches - medium cache (2 hours)
+    console.log(
+      `🔮 ${dataType.toUpperCase()}: Setting 2 hour TTL for future matches`
+    );
+    return 120; // 2 hours
   }
 
   /**

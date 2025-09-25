@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BackgroundSync } from "@/lib/background-sync/background-sync";
 import { FastFootballApi } from "@/lib/client-api/FastFootballApi";
+import { PRIORITY_LEAGUES } from "@/lib/config/leagues";
 
 // Global instances to avoid reinitialization
 let globalSync: BackgroundSync | null = null;
@@ -31,9 +32,8 @@ export async function POST(request: NextRequest) {
     const sync = getSync();
     const api = getApi();
 
-    // Ligas por defecto si no se especifican
-    const defaultLeagues = [128, 129, 130, 2, 3, 848, 15];
-    const targetLeagues = leagues || defaultLeagues;
+    // Ligas prioritarias si no se especifican (organizadas por popularidad)
+    const targetLeagues = leagues || [...PRIORITY_LEAGUES];
 
     console.log(
       `🔄 Loading on demand for ${date}, ${targetLeagues.length} leagues`
@@ -136,11 +136,10 @@ export async function GET(request: NextRequest) {
     const sync = getSync();
     const api = getApi();
 
-    // Ligas a verificar
-    const defaultLeagues = [128, 129, 130, 2, 3, 848, 15];
+    // Ligas a verificar (prioritarias por defecto)
     const targetLeagues = leagues
       ? leagues.split(",").map(id => parseInt(id.trim()))
-      : defaultLeagues;
+      : [...PRIORITY_LEAGUES];
 
     // Verificar qué datos tenemos
     const availabilityCheck = await Promise.all(

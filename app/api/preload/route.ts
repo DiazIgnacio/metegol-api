@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BackgroundSync } from "@/lib/background-sync/background-sync";
+import { PRIORITY_LEAGUES } from "@/lib/config/leagues";
 import { format, addDays } from "date-fns";
 
 // Global instance to avoid reinitialization
@@ -18,9 +19,8 @@ export async function POST(request: NextRequest) {
 
     const sync = getSync();
 
-    // Ligas por defecto si no se especifican
-    const defaultLeagues = [128, 129, 130, 2, 3, 848, 15];
-    const targetLeagues = leagues || defaultLeagues;
+    // Ligas prioritarias si no se especifican (organizadas por popularidad)
+    const targetLeagues = leagues || [...PRIORITY_LEAGUES];
 
     console.log(
       `🚀 Starting preload for ${days} days, ${targetLeagues.length} leagues`
@@ -91,9 +91,8 @@ export async function GET(request: NextRequest) {
       }
 
       const statusPromises = checkDates.map(async date => {
-        const defaultLeagues = [128, 129, 130, 2, 3, 848, 15];
         const leagueStatus = await Promise.all(
-          defaultLeagues.map(async leagueId => {
+          PRIORITY_LEAGUES.map(async leagueId => {
             const hasData = await sync.hasFixturesData(leagueId, date);
             return { leagueId, hasData };
           })

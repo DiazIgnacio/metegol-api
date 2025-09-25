@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FastFootballApi } from "@/lib/client-api/FastFootballApi";
+import { PRIORITY_LEAGUES } from "@/lib/config/leagues";
 import { Match } from "@/types/match";
 import { format, parseISO } from "date-fns";
+import { zonedTimeToUtc, toZonedTime } from "date-fns-tz";
 
 // Global instance to avoid Firebase reinitialization
 let globalApi: FastFootballApi | null = null;
@@ -25,8 +27,19 @@ export async function GET(request: NextRequest) {
     let matches: Match[] = [];
 
     const getDateString = (inputDate?: string | null) => {
-      const targetDate = inputDate ? parseISO(inputDate) : new Date();
-      return format(targetDate, "yyyy-MM-dd");
+      // Use Argentina timezone (UTC-3) instead of server timezone
+      const argTimeZone = "America/Argentina/Buenos_Aires";
+
+      if (inputDate) {
+        // If date is provided, parse it in Argentina timezone
+        const parsedDate = parseISO(inputDate);
+        const zonedDate = toZonedTime(parsedDate, argTimeZone);
+        return format(zonedDate, "yyyy-MM-dd");
+      } else {
+        // For current date, use Argentina current time
+        const nowInArg = toZonedTime(new Date(), argTimeZone);
+        return format(nowInArg, "yyyy-MM-dd");
+      }
     };
 
     if (leagues) {
@@ -52,31 +65,34 @@ export async function GET(request: NextRequest) {
         parseInt(league)
       );
     } else {
-      // Default leagues for today
+      // Default leagues for today - usando configuración centralizada + Copa Libertadores
       const todayStr = getDateString(date);
-      const defaultLeagues = [
-        128,
-        129,
-        130, // Argentina (Liga Profesional, Primera Nacional, Copa Argentina)
-        2,
-        3,
-        848, // UEFA (Champions, Europa, Conference)
-        140,
-        39,
-        135,
-        78,
-        61, // Top 5 European leagues
-        13,
-        11, // CONMEBOL (Libertadores, Sudamericana)
-        71,
-        73, // Brazil (Brasileirão A, Copa do Brasil)
-        15, // Mundial de Clubes
-      ];
-      matches = await api.getMultipleLeaguesFixtures(todayStr, defaultLeagues);
+      const allLeagues = [...PRIORITY_LEAGUES, 13]; // Agregar Copa Libertadores (ID: 13)
+      matches = await api.getMultipleLeaguesFixtures(todayStr, allLeagues);
     }
 
+    // Filter matches by Argentina date to exclude matches from previous day in UTC
+    const filterByArgentinaDate = (matches: Match[], targetDateStr: string) => {
+      const argTimeZone = "America/Argentina/Buenos_Aires";
+
+      return matches.filter(match => {
+        // Convert match UTC date to Argentina time
+        const matchUTCDate = new Date(match.fixture.date);
+        const matchArgDate = toZonedTime(matchUTCDate, argTimeZone);
+        const matchArgDateStr = format(matchArgDate, "yyyy-MM-dd");
+
+        return matchArgDateStr === targetDateStr;
+      });
+    };
+
+    // Apply Argentina timezone filter
+    const targetDateStr = getDateString(date);
+    const filteredMatches = filterByArgentinaDate(matches, targetDateStr);
+
+    // No direct API fallback - let FastFootballApi handle cache/API logic internally
+
     // Get matches with detailed data (stats, events, lineups) - already cached in Firebase
-    const matchesWithStats = await api.getMatchesWithDetails(matches);
+    const matchesWithStats = await api.getMatchesWithDetails(filteredMatches);
 
     return NextResponse.json({ matches: matchesWithStats });
   } catch (error) {
