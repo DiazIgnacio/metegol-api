@@ -4,21 +4,20 @@ import { LineupTeam } from "@/types/match";
 
 interface LineupsProps {
   lineups?: {
-    home: LineupTeam;
-    away: LineupTeam;
+    home: LineupTeam | null;
+    away: LineupTeam | null;
   };
 }
 
 export const Lineups: React.FC<LineupsProps> = ({ lineups }) => {
-  if (!lineups)
+  const { away: awayTeam, home: homeTeam } = lineups || {};
+
+  if (!homeTeam || !awayTeam)
     return (
       <div className="py-4 text-center text-white/60">
         No hay formaciones disponibles.
       </div>
     );
-
-  const homeTeam = lineups.home;
-  const awayTeam = lineups.away;
 
   return (
     <div className="w-full">

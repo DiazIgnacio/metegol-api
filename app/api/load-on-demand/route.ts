@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { BackgroundSync } from "@/lib/background-sync/background-sync";
 import { FastFootballApi } from "@/lib/client-api/FastFootballApi";
 import { PRIORITY_LEAGUES } from "@/lib/config/leagues";
+import type { Match } from "@/types/match";
 
 // Global instances to avoid reinitialization
 let globalSync: BackgroundSync | null = null;
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest) {
     const missing = availabilityCheck.filter(item => !item.hasData);
 
     // Si tenemos todos los datos, devolverlos
-    let matches: any[] = [];
+    let matches: Match[] = [];
     if (available.length > 0) {
       const availableLeagues = available.map(item => item.leagueId);
       matches = await api.getMultipleLeaguesFixtures(date, availableLeagues);

@@ -3,7 +3,7 @@
  * Ensures that matches with goals have corresponding goal events
  */
 
-import type { Match } from "@/types/match";
+import type { Match, TeamMatchEvents } from "@/types/match";
 
 export class EventsValidator {
   constructor() {
@@ -84,7 +84,7 @@ export class EventsValidator {
     match: Match,
     getMatchEventsFunc: (
       matchId: number
-    ) => Promise<{ home: any[]; away: any[] } | null>
+    ) => Promise<{ home: TeamMatchEvents; away: TeamMatchEvents } | null>
   ): Promise<Match> {
     try {
       console.log(
@@ -127,7 +127,7 @@ export class EventsValidator {
     match: Match,
     getMatchEventsFunc: (
       matchId: number
-    ) => Promise<{ home: any[]; away: any[] } | null>
+    ) => Promise<{ home: TeamMatchEvents; away: TeamMatchEvents } | null>
   ): Promise<Match> {
     // Only validate finished or live matches with goals
     const shouldValidate =
@@ -178,7 +178,7 @@ export class EventsValidator {
     matches: Match[],
     getMatchEventsFunc: (
       matchId: number
-    ) => Promise<{ home: any[]; away: any[] } | null>
+    ) => Promise<{ home: TeamMatchEvents; away: TeamMatchEvents } | null>
   ): Promise<Match[]> {
     const matchesNeedingFix = this.getMatchesNeedingFix(matches);
 

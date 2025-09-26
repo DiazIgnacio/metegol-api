@@ -603,8 +603,8 @@ function LiveMap({
 }: {
   minute: number | null;
   lineups?: {
-    home: LineupTeam;
-    away: LineupTeam;
+    home: LineupTeam | null;
+    away: LineupTeam | null;
   };
 }) {
   if (!lineups) {

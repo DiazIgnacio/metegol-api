@@ -53,7 +53,7 @@ if (typeof window === "undefined") {
     console.log("🗄️ Firestore database connected");
   } catch (error) {
     console.error("❌ Error initializing Firebase Admin:", error);
-    adminDb = null as any;
+    adminDb = null as unknown as admin.firestore.Firestore;
   }
 }
 

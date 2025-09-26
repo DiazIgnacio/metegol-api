@@ -6,6 +6,8 @@ import type {
   League,
   TeamMatchEvents,
   LineupTeam,
+  LeagueStandings,
+  PreloadStatus,
 } from "@/types/match";
 import { EventsKeys } from "@/types/match";
 
@@ -135,7 +137,7 @@ export class FootballApi {
     }
   }
 
-  static async getPreloadStatus(): Promise<any | null> {
+  static async getPreloadStatus(): Promise<PreloadStatus | null> {
     try {
       const response = await fetch(`${this.baseUrl}/api/preload?action=status`);
 
@@ -151,10 +153,12 @@ export class FootballApi {
     }
   }
 
-  static async getStandings(leagueId: number | string): Promise<any> {
+  static async getStandings(
+    leagueId: number | string
+  ): Promise<LeagueStandings | null> {
     try {
       const url = `${this.baseUrl}/api/standings?id=${leagueId}`;
-      const data = await apiCall<any>(url, {
+      const data = await apiCall<LeagueStandings>(url, {
         cache: "no-store",
       });
       return data;
