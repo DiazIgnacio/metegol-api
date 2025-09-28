@@ -1,8 +1,7 @@
-// Fast Football API - Reads only from Firebase (no external API calls)
 import { FirebaseCache } from "../firebase/cache";
 import { EventsValidator } from "./EventsValidator";
 import { ALL_NAVBAR_LEAGUES } from "@/lib/config/leagues";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 import type {
   Match,
   TeamMatchStats,
@@ -699,42 +698,6 @@ export class FastFootballApi {
   }
 
   /**
-   * Get today's matches (most common use case)
-   */
-  async getTodaysMatches(leagueIds?: number[]): Promise<Match[]> {
-    const today = format(new Date(), "yyyy-MM-dd");
-    const leagues = leagueIds || [...ALL_NAVBAR_LEAGUES];
-    return this.getMultipleLeaguesFixtures(today, leagues);
-  }
-
-  /**
-   * Get recent matches (today + yesterday)
-   */
-  async getRecentMatches(leagueIds?: number[]): Promise<Match[]> {
-    const today = format(new Date(), "yyyy-MM-dd");
-    const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
-    const leagues = leagueIds || [...ALL_NAVBAR_LEAGUES];
-
-    const [todayMatches, yesterdayMatches] = await Promise.all([
-      this.getMultipleLeaguesFixtures(today, leagues),
-      this.getMultipleLeaguesFixtures(yesterday, leagues),
-    ]);
-
-    const allMatches = [...todayMatches, ...yesterdayMatches];
-
-    // Remove duplicates and sort
-    const uniqueMatches = allMatches.filter(
-      (match, index, self) =>
-        index === self.findIndex(m => m.fixture.id === match.fixture.id)
-    );
-
-    return uniqueMatches.sort(
-      (a, b) =>
-        new Date(b.fixture.date).getTime() - new Date(a.fixture.date).getTime()
-    );
-  }
-
-  /**
    * Get matches with full details (stats, events, lineups) - OPTIMIZED
    */
   async getMatchesWithDetails(matches: Match[]): Promise<Match[]> {
@@ -1015,21 +978,5 @@ export class FastFootballApi {
 
     // Get details for live matches
     return this.getMatchesWithDetails(liveMatches);
-  }
-
-  /**
-   * Get performance stats of the fast API
-   */
-  getPerformanceStats(): {
-    averageResponseTime: number;
-    cacheHitRate: number;
-    totalRequests: number;
-  } {
-    // This would track actual performance metrics
-    return {
-      averageResponseTime: 50, // ms - should be very fast since it's only Firebase reads
-      cacheHitRate: 95, // % - should be very high since we're reading from cache
-      totalRequests: 0, // Would be tracked in real implementation
-    };
   }
 }

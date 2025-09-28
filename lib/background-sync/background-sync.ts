@@ -1,4 +1,3 @@
-// Background Sync - Simplified wrapper around DataSyncer for preloading
 import { DataSyncer } from "./DataSyncer";
 import { FirebaseCache } from "../firebase/cache";
 // import { format } from "date-fns";
