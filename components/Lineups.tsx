@@ -4,21 +4,20 @@ import { LineupTeam } from "@/types/match";
 
 interface LineupsProps {
   lineups?: {
-    home: LineupTeam;
-    away: LineupTeam;
+    home: LineupTeam | null;
+    away: LineupTeam | null;
   };
 }
 
 export const Lineups: React.FC<LineupsProps> = ({ lineups }) => {
-  if (!lineups)
+  const { away: awayTeam, home: homeTeam } = lineups || {};
+
+  if (!homeTeam || !awayTeam)
     return (
       <div className="py-4 text-center text-white/60">
         No hay formaciones disponibles.
       </div>
     );
-
-  const homeTeam = lineups.home;
-  const awayTeam = lineups.away;
 
   return (
     <div className="w-full">
@@ -36,7 +35,9 @@ export const Lineups: React.FC<LineupsProps> = ({ lineups }) => {
           {/* Starting XI Section */}
           <div className="mb-4">
             <div className="mb-3 text-center">
-              <span className="text-xs font-semibold text-white">TITULARES</span>
+              <span className="text-xs font-semibold text-white">
+                TITULARES
+              </span>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -74,7 +75,9 @@ export const Lineups: React.FC<LineupsProps> = ({ lineups }) => {
           {/* Substitutes Section */}
           <div>
             <div className="mb-3 text-center">
-              <span className="text-xs font-semibold text-white">SUPLENTES</span>
+              <span className="text-xs font-semibold text-white">
+                SUPLENTES
+              </span>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -154,7 +157,7 @@ const TeamHeader = ({
     {/* Coach Info */}
     {team?.coach && !isMobile && (
       <div
-        className={`flex items-center gap-2 mt-10 ${
+        className={`mt-10 flex items-center gap-2 ${
           align === "right" ? "flex-row-reverse" : ""
         }`}
       >
@@ -186,7 +189,12 @@ const SimplePlayerList = ({
   isSub = false,
 }: {
   players?: {
-    player: { id: number; name: string; number: number | null; pos: string | null };
+    player: {
+      id: number;
+      name: string;
+      number: number | null;
+      pos: string | null;
+    };
   }[];
   colors?: LineupTeam["team"]["colors"];
   isSub?: boolean;

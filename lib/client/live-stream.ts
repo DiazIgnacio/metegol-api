@@ -1,4 +1,3 @@
-// Client-side live streaming for real-time match updates
 import type { Match } from "@/types/match";
 
 interface LiveMatchUpdate {
@@ -124,108 +123,11 @@ export class LiveMatchStream {
   }
 
   /**
-   * Get current connection status
-   */
-  getStatus(): {
-    connected: boolean;
-    readyState: number | null;
-    reconnectAttempts: number;
-  } {
-    return {
-      connected: this.isConnected,
-      readyState: this.eventSource?.readyState || null,
-      reconnectAttempts: this.reconnectAttempts,
-    };
-  }
-
-  /**
    * Force reconnection
    */
   reconnect(leagueIds: number[]): void {
     this.disconnect();
     this.reconnectAttempts = 0;
     setTimeout(() => this.connect(leagueIds), 1000);
-  }
-}
-
-// React hook for live match streaming
-export function useLiveMatches(leagueIds: number[]) {
-  const [matches, setMatches] = React.useState<Match[]>([]);
-  const [status, setStatus] = React.useState<string>("disconnected");
-  const [error, setError] = React.useState<string | null>(null);
-  const streamRef = React.useRef<LiveMatchStream | null>(null);
-
-  // Extract the complex expression to a separate variable
-  const leagueIdsKey = React.useMemo(() => leagueIds.join(","), [leagueIds]);
-
-  React.useEffect(() => {
-    if (leagueIds.length === 0) return;
-
-    streamRef.current = new LiveMatchStream();
-
-    const unsubscribe = streamRef.current.subscribe(update => {
-      switch (update.type) {
-        case "live_matches":
-          setMatches(update.matches || []);
-          setStatus("connected");
-          setError(null);
-          break;
-        case "no_live_matches":
-          setMatches([]);
-          setStatus("connected");
-          setError(null);
-          break;
-        case "error":
-          setStatus("error");
-          setError(update.error || "Unknown error");
-          break;
-      }
-    });
-
-    streamRef.current.connect(leagueIds);
-
-    return () => {
-      unsubscribe();
-      streamRef.current?.disconnect();
-      streamRef.current = null;
-    };
-  }, [leagueIds, leagueIdsKey]);
-
-  const reconnect = React.useCallback(() => {
-    streamRef.current?.reconnect(leagueIds);
-  }, [leagueIds]);
-
-  return {
-    matches,
-    status,
-    error,
-    reconnect,
-  };
-}
-
-// For non-React usage
-import React from "react";
-
-/**
- * Initialize live match detector when app starts - 2025 OPTIMIZATION
- */
-export async function initializeLiveDetector(): Promise<void> {
-  if (typeof window === "undefined") {
-    try {
-      // Start live detector on server
-      const response = await fetch("/api/admin/live-detector", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start" }),
-      });
-
-      if (response.ok) {
-        console.log("✅ Live match detector initialized");
-      } else {
-        console.warn("⚠️ Failed to initialize live detector");
-      }
-    } catch (error) {
-      console.error("❌ Error initializing live detector:", error);
-    }
   }
 }

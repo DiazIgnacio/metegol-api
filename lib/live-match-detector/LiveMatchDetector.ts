@@ -25,7 +25,7 @@ export class LiveMatchDetector {
   private isRunning = false;
 
   // Default leagues to monitor - ALL leagues from navbar
-  private monitoredLeagues = [...ALL_NAVBAR_LEAGUES];
+  private monitoredLeagues: number[] = [...ALL_NAVBAR_LEAGUES];
 
   constructor() {
     this.api = new FastFootballApi();
@@ -268,8 +268,8 @@ export class LiveMatchDetector {
    * Add a league to monitoring
    */
   addLeague(leagueId: number): void {
-    if (!this.monitoredLeagues.includes(leagueId as any)) {
-      this.monitoredLeagues.push(leagueId as any);
+    if (!this.monitoredLeagues.includes(leagueId)) {
+      this.monitoredLeagues.push(leagueId);
       console.log(`➕ LIVE DETECTOR: Added league ${leagueId} to monitoring`);
     }
   }
@@ -278,7 +278,7 @@ export class LiveMatchDetector {
    * Remove a league from monitoring
    */
   removeLeague(leagueId: number): void {
-    const index = this.monitoredLeagues.indexOf(leagueId as any);
+    const index = this.monitoredLeagues.indexOf(leagueId);
     if (index > -1) {
       this.monitoredLeagues.splice(index, 1);
       console.log(

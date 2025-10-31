@@ -3,7 +3,7 @@ import { FastFootballApi } from "@/lib/client-api/FastFootballApi";
 import { PRIORITY_LEAGUES } from "@/lib/config/leagues";
 import { Match } from "@/types/match";
 import { format, parseISO } from "date-fns";
-import { zonedTimeToUtc, toZonedTime } from "date-fns-tz";
+import { toZonedTime } from "date-fns-tz";
 
 // Global instance to avoid Firebase reinitialization
 let globalApi: FastFootballApi | null = null;

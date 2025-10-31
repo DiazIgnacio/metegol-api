@@ -3,7 +3,7 @@
  * Ensures that matches with goals have corresponding goal events
  */
 
-import type { Match } from "@/types/match";
+import type { Match, TeamMatchEvents } from "@/types/match";
 
 export class EventsValidator {
   constructor() {
@@ -84,7 +84,7 @@ export class EventsValidator {
     match: Match,
     getMatchEventsFunc: (
       matchId: number
-    ) => Promise<{ home: any[]; away: any[] } | null>
+    ) => Promise<{ home: TeamMatchEvents; away: TeamMatchEvents } | null>
   ): Promise<Match> {
     try {
       console.log(
@@ -120,39 +120,6 @@ export class EventsValidator {
   }
 
   /**
-   * Validates and fixes match events automatically
-   * Returns updated match if fixes were applied
-   */
-  async validateAndFix(
-    match: Match,
-    getMatchEventsFunc: (
-      matchId: number
-    ) => Promise<{ home: any[]; away: any[] } | null>
-  ): Promise<Match> {
-    // Only validate finished or live matches with goals
-    const shouldValidate =
-      (match.goals.home > 0 || match.goals.away > 0) &&
-      ["FT", "AET", "PEN", "1H", "2H", "LIVE", "ET", "P", "HT"].includes(
-        match.fixture.status.short
-      );
-
-    if (!shouldValidate) {
-      return match;
-    }
-
-    const isValid = this.validateMatchEvents(match);
-
-    if (!isValid) {
-      console.log(
-        `🔄 EVENTS AUTO-FIX: Triggering automatic fix for match ${match.fixture.id}`
-      );
-      return await this.fixMatchEvents(match, getMatchEventsFunc);
-    }
-
-    return match;
-  }
-
-  /**
    * Validates multiple matches and returns which ones need fixing
    */
   getMatchesNeedingFix(matches: Match[]): Match[] {
@@ -178,7 +145,7 @@ export class EventsValidator {
     matches: Match[],
     getMatchEventsFunc: (
       matchId: number
-    ) => Promise<{ home: any[]; away: any[] } | null>
+    ) => Promise<{ home: TeamMatchEvents; away: TeamMatchEvents } | null>
   ): Promise<Match[]> {
     const matchesNeedingFix = this.getMatchesNeedingFix(matches);
 

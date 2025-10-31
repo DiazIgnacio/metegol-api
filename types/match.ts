@@ -126,8 +126,8 @@ export interface Match {
     away: TeamMatchEvents;
   };
   lineups?: {
-    home: LineupTeam;
-    away: LineupTeam;
+    home: LineupTeam | null;
+    away: LineupTeam | null;
   };
 }
 
@@ -173,4 +173,41 @@ export interface LineupTeam {
       grid: string | null;
     };
   }[];
+}
+
+export interface Standing {
+  rank: number;
+  team: {
+    id: number;
+    name: string;
+    logo: string;
+  };
+  points: number;
+  played: number;
+  win: number;
+  draw: number;
+  lose: number;
+  goals: {
+    for: number;
+    against: number;
+  };
+  form: string;
+}
+
+export interface LeagueStandings {
+  standings: Standing[];
+  league: {
+    id: number;
+    name: string;
+    logo: string;
+    country: string;
+    season: number;
+  };
+}
+
+export interface PreloadStatus {
+  lastSync: string | null;
+  totalCached: number;
+  upcomingMatches: number;
+  isRunning: boolean;
 }

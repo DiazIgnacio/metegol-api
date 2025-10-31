@@ -1,16 +1,20 @@
-// Fast Football API - Reads only from Firebase (no external API calls)
 import { FirebaseCache } from "../firebase/cache";
 import { EventsValidator } from "./EventsValidator";
 import { ALL_NAVBAR_LEAGUES } from "@/lib/config/leagues";
-import { format, subDays } from "date-fns";
-import type { Match } from "@/types/match";
+import { format } from "date-fns";
+import type {
+  Match,
+  TeamMatchStats,
+  TeamMatchEvents,
+  LineupTeam,
+} from "@/types/match";
 
 export class FastFootballApi {
   private cache: FirebaseCache;
   private eventsValidator: EventsValidator;
   private memoryCache: Map<
     string,
-    { data: any; timestamp: number; ttl: number }
+    { data: unknown; timestamp: number; ttl: number }
   > = new Map();
 
   constructor() {
@@ -23,7 +27,7 @@ export class FastFootballApi {
    */
   private async getCachedData<T>(
     collection: string,
-    options: any
+    options: Record<string, unknown>
   ): Promise<T | null> {
     const cacheKey = `${collection}_${JSON.stringify(options)}`;
 
@@ -84,9 +88,7 @@ export class FastFootballApi {
         }
       }
 
-      // No automatic fallback - return empty array if not in cache
       console.log(`⚪ No cached fixtures found for ${cacheKey}`);
-      return [];
 
       try {
         // Import FootballApiServer dynamically to avoid circular imports
@@ -98,7 +100,7 @@ export class FastFootballApi {
           return [];
         }
 
-        const externalApi = new FootballApiServer(apiKey);
+        const externalApi = new FootballApiServer(apiKey as string);
         const externalData = await externalApi.getFixturesByDateAndLeague(
           from,
           leagueId
@@ -159,14 +161,14 @@ export class FastFootballApi {
    */
   async getMatchStats(
     matchId: number
-  ): Promise<{ home: any[]; away: any[] } | null> {
+  ): Promise<{ home: TeamMatchStats; away: TeamMatchStats } | null> {
     const cacheKey = `match_stats_${matchId}`;
 
     try {
-      const cached = await this.getCachedData<{ home: any[]; away: any[] }>(
-        cacheKey,
-        {}
-      );
+      const cached = await this.getCachedData<{
+        home: TeamMatchStats;
+        away: TeamMatchStats;
+      }>(cacheKey, {});
 
       if (cached) {
         return cached;
@@ -191,8 +193,16 @@ export class FastFootballApi {
 
         // We need the match object to get stats, but we only have the ID
         // This method is deprecated, but for backwards compatibility we create a minimal match
-        const match = { fixture: { id: matchId }, teams: null };
-        const externalData = await externalApi.getMatchStats(match as any);
+        const match = {
+          fixture: { id: matchId, date: "", status: { long: "", short: "" } },
+          teams: {
+            home: { id: 0, name: "", logo: "" },
+            away: { id: 0, name: "", logo: "" },
+          },
+          goals: { home: 0, away: 0 },
+          league: { id: 0, name: "", logo: "", country: "" },
+        } as Match;
+        const externalData = await externalApi.getMatchStats(match);
 
         if (externalData) {
           console.log(
@@ -239,14 +249,14 @@ export class FastFootballApi {
    */
   async getMatchEvents(
     matchId: number
-  ): Promise<{ home: any[]; away: any[] } | null> {
+  ): Promise<{ home: TeamMatchEvents; away: TeamMatchEvents } | null> {
     const cacheKey = `match_events_${matchId}`;
 
     try {
-      const cached = await this.getCachedData<{ home: any[]; away: any[] }>(
-        cacheKey,
-        {}
-      );
+      const cached = await this.getCachedData<{
+        home: TeamMatchEvents;
+        away: TeamMatchEvents;
+      }>(cacheKey, {});
 
       if (cached) {
         return cached;
@@ -270,8 +280,16 @@ export class FastFootballApi {
         const externalApi = new FootballApiServer(apiKey);
 
         // We need the match object to get events, so we create a minimal one
-        const match = { fixture: { id: matchId } };
-        const externalData = await externalApi.getMatchEvents(match as any);
+        const match = {
+          fixture: { id: matchId, date: "", status: { long: "", short: "" } },
+          teams: {
+            home: { id: 0, name: "", logo: "" },
+            away: { id: 0, name: "", logo: "" },
+          },
+          goals: { home: 0, away: 0 },
+          league: { id: 0, name: "", logo: "", country: "" },
+        } as Match;
+        const externalData = await externalApi.getMatchEvents(match);
 
         if (externalData) {
           console.log(
@@ -319,15 +337,15 @@ export class FastFootballApi {
    * Get match events with team information preserved
    */
   async getMatchEventsWithTeamInfo(
-    match: any
-  ): Promise<{ home: any[]; away: any[] } | null> {
+    match: Match
+  ): Promise<{ home: TeamMatchEvents; away: TeamMatchEvents } | null> {
     const cacheKey = `match_events_${match.fixture.id}`;
 
     try {
-      const cached = await this.getCachedData<{ home: any[]; away: any[] }>(
-        cacheKey,
-        {}
-      );
+      const cached = await this.getCachedData<{
+        home: TeamMatchEvents;
+        away: TeamMatchEvents;
+      }>(cacheKey, {});
 
       if (cached) {
         return cached;
@@ -399,16 +417,16 @@ export class FastFootballApi {
    * Get match stats with team information preserved
    */
   async getMatchStatsWithMatchInfo(
-    match: any
-  ): Promise<{ home: any[]; away: any[] } | null> {
+    match: Match
+  ): Promise<{ home: TeamMatchStats; away: TeamMatchStats } | null> {
     const cacheKey = `match_stats_${match.fixture.id}`;
 
     try {
       // Try to get from cache first
-      const cached = await this.getCachedData<{ home: any[]; away: any[] }>(
-        cacheKey,
-        {}
-      );
+      const cached = await this.getCachedData<{
+        home: TeamMatchStats;
+        away: TeamMatchStats;
+      }>(cacheKey, {});
 
       if (cached) {
         return cached;
@@ -481,13 +499,13 @@ export class FastFootballApi {
     fixtureId: string,
     homeId: string,
     awayId: string
-  ): Promise<{ home: any | null; away: any | null } | null> {
+  ): Promise<{ home: LineupTeam | null; away: LineupTeam | null } | null> {
     const cacheKey = `lineups_${fixtureId}_${homeId}_${awayId}`;
 
     try {
       const cached = await this.getCachedData<{
-        home: any | null;
-        away: any | null;
+        home: LineupTeam | null;
+        away: LineupTeam | null;
       }>(cacheKey, {});
 
       if (cached) {
@@ -680,42 +698,6 @@ export class FastFootballApi {
   }
 
   /**
-   * Get today's matches (most common use case)
-   */
-  async getTodaysMatches(leagueIds?: number[]): Promise<Match[]> {
-    const today = format(new Date(), "yyyy-MM-dd");
-    const leagues = leagueIds || [...ALL_NAVBAR_LEAGUES];
-    return this.getMultipleLeaguesFixtures(today, leagues);
-  }
-
-  /**
-   * Get recent matches (today + yesterday)
-   */
-  async getRecentMatches(leagueIds?: number[]): Promise<Match[]> {
-    const today = format(new Date(), "yyyy-MM-dd");
-    const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
-    const leagues = leagueIds || [...ALL_NAVBAR_LEAGUES];
-
-    const [todayMatches, yesterdayMatches] = await Promise.all([
-      this.getMultipleLeaguesFixtures(today, leagues),
-      this.getMultipleLeaguesFixtures(yesterday, leagues),
-    ]);
-
-    const allMatches = [...todayMatches, ...yesterdayMatches];
-
-    // Remove duplicates and sort
-    const uniqueMatches = allMatches.filter(
-      (match, index, self) =>
-        index === self.findIndex(m => m.fixture.id === match.fixture.id)
-    );
-
-    return uniqueMatches.sort(
-      (a, b) =>
-        new Date(b.fixture.date).getTime() - new Date(a.fixture.date).getTime()
-    );
-  }
-
-  /**
    * Get matches with full details (stats, events, lineups) - OPTIMIZED
    */
   async getMatchesWithDetails(matches: Match[]): Promise<Match[]> {
@@ -809,9 +791,14 @@ export class FastFootballApi {
   /**
    * Batch get stats for multiple matches - OPTIMIZED
    */
-  private async getBatchStats(matches: Match[]): Promise<Record<string, any>> {
+  private async getBatchStats(
+    matches: Match[]
+  ): Promise<Record<string, { home: TeamMatchStats; away: TeamMatchStats }>> {
     console.log(`📊 getBatchStats called for ${matches.length} matches`);
-    const results: Record<string, any> = {};
+    const results: Record<
+      string,
+      { home: TeamMatchStats; away: TeamMatchStats }
+    > = {};
 
     try {
       // Use getMatchStatsWithMatchInfo for each match (which includes fallback logic)
@@ -857,9 +844,14 @@ export class FastFootballApi {
   /**
    * Batch get events for multiple matches - OPTIMIZED
    */
-  private async getBatchEvents(matches: Match[]): Promise<Record<string, any>> {
+  private async getBatchEvents(
+    matches: Match[]
+  ): Promise<Record<string, { home: TeamMatchEvents; away: TeamMatchEvents }>> {
     console.log(`🎯 getBatchEvents called for ${matches.length} matches`);
-    const results: Record<string, any> = {};
+    const results: Record<
+      string,
+      { home: TeamMatchEvents; away: TeamMatchEvents }
+    > = {};
 
     try {
       // Use getMatchEvents for each match (which includes fallback logic)
@@ -908,9 +900,14 @@ export class FastFootballApi {
    */
   private async getBatchLineups(
     matches: Match[]
-  ): Promise<Record<string, any>> {
+  ): Promise<
+    Record<string, { home: LineupTeam | null; away: LineupTeam | null }>
+  > {
     console.log(`⚽ getBatchLineups called for ${matches.length} matches`);
-    const results: Record<string, any> = {};
+    const results: Record<
+      string,
+      { home: LineupTeam | null; away: LineupTeam | null }
+    > = {};
 
     // Filter matches that can have lineups
     const validMatches = matches.filter(
@@ -967,39 +964,6 @@ export class FastFootballApi {
   }
 
   /**
-   * Check data freshness (when was it last synced)
-   */
-  async getDataFreshness(
-    leagueId: number,
-    date: string
-  ): Promise<{
-    lastSync: number | null;
-    age: number | null;
-    isStale: boolean;
-  }> {
-    const _cacheKey = `fixtures_${leagueId}_${date}_${date}`;
-
-    try {
-      // Get cache metadata to check when it was last updated
-      const lastModified = Date.now(); // This would need to be implemented in cache metadata
-      const age = Date.now() - lastModified;
-      const isStale = age > 60 * 60 * 1000; // Consider stale after 1 hour
-
-      return {
-        lastSync: lastModified,
-        age,
-        isStale,
-      };
-    } catch {
-      return {
-        lastSync: null,
-        age: null,
-        isStale: true,
-      };
-    }
-  }
-
-  /**
    * Get live matches (currently happening)
    */
   async getLiveMatches(leagueIds?: number[]): Promise<Match[]> {
@@ -1014,21 +978,5 @@ export class FastFootballApi {
 
     // Get details for live matches
     return this.getMatchesWithDetails(liveMatches);
-  }
-
-  /**
-   * Get performance stats of the fast API
-   */
-  getPerformanceStats(): {
-    averageResponseTime: number;
-    cacheHitRate: number;
-    totalRequests: number;
-  } {
-    // This would track actual performance metrics
-    return {
-      averageResponseTime: 50, // ms - should be very fast since it's only Firebase reads
-      cacheHitRate: 95, // % - should be very high since we're reading from cache
-      totalRequests: 0, // Would be tracked in real implementation
-    };
   }
 }

@@ -1,8 +1,8 @@
-// Background Sync - Simplified wrapper around DataSyncer for preloading
 import { DataSyncer } from "./DataSyncer";
 import { FirebaseCache } from "../firebase/cache";
 // import { format } from "date-fns";
 import type { Match } from "@/types/match";
+import type { FootballApiServer } from "../footballApi";
 
 export class BackgroundSync {
   private dataSyncer: DataSyncer;
@@ -131,7 +131,10 @@ export class BackgroundSync {
   /**
    * Sync detailed match data (stats, events, lineups)
    */
-  private async syncMatchDetails(api: any, matches: Match[]): Promise<void> {
+  private async syncMatchDetails(
+    api: FootballApiServer,
+    matches: Match[]
+  ): Promise<void> {
     const delay = (ms: number) =>
       new Promise(resolve => setTimeout(resolve, ms));
 

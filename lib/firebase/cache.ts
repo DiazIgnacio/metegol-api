@@ -2,8 +2,8 @@
 import { adminDb } from "./config";
 import type { Match } from "@/types/match";
 
-interface CacheDocument {
-  data: any;
+interface CacheDocument<T = unknown> {
+  data: T;
   timestamp: number;
   ttl: number; // Time to live in milliseconds
   key: string;
@@ -28,7 +28,10 @@ export class FirebaseCache {
     return FirebaseCache.instance;
   }
 
-  private generateCacheKey(collection: string, params: any): string {
+  private generateCacheKey(
+    collection: string,
+    params: Record<string, unknown>
+  ): string {
     const baseKey = `${collection}_${JSON.stringify(params)}`;
     return baseKey
       .toLowerCase()
@@ -36,7 +39,10 @@ export class FirebaseCache {
       .substring(0, 100);
   }
 
-  async get<T>(collection: string, params: any): Promise<T | null> {
+  async get<T>(
+    collection: string,
+    params: Record<string, unknown>
+  ): Promise<T | null> {
     try {
       const key = this.generateCacheKey(collection, params);
       const doc = await adminDb.collection(this.collectionName).doc(key).get();
@@ -45,7 +51,7 @@ export class FirebaseCache {
         return null;
       }
 
-      const cacheDoc = doc.data() as CacheDocument;
+      const cacheDoc = doc.data() as CacheDocument<T>;
 
       // Check if cache has expired
       if (Date.now() > cacheDoc.timestamp + cacheDoc.ttl) {
@@ -63,7 +69,7 @@ export class FirebaseCache {
 
   async set<T>(
     collection: string,
-    params: any,
+    params: Record<string, unknown>,
     data: T,
     ttlMinutes: number = 60
   ): Promise<void> {
@@ -71,7 +77,7 @@ export class FirebaseCache {
       const key = this.generateCacheKey(collection, params);
       const ttl = ttlMinutes * 60 * 1000; // Convert to milliseconds
 
-      const cacheDoc: CacheDocument = {
+      const cacheDoc: CacheDocument<T> = {
         data: data,
         timestamp: Date.now(),
         ttl: ttl,
