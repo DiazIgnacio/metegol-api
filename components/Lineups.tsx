@@ -135,7 +135,7 @@ const TeamHeader = ({
         <Image
           src={team.team.logo}
           alt={team.team.name || ""}
-          width={28}
+          width={29}
           height={28}
           className="rounded-full bg-white"
         />
